@@ -2,47 +2,77 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Simulador Principios de Macroeconomía: Equilibrio conjunto bienes y dinero</title>
+    <title>Simulador Macro: Análisis de Múltiples Shocks</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        :root { --bg: #fdfdfd; --side: #1a2a3a; --accent: #3498db; --red: #e74c3c; --green: #27ae60; --gray: #95a5a6; }
-        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; background: #eee; overflow: hidden; }
-        #sidebar { width: 380px; background: var(--side); color: white; padding: 20px; overflow-y: auto; }
+        :root { --bg: #fdfdfd; --side: #1a2a3a; --accent: #3498db; --red: #e74c3c; --green: #27ae60; --gray: #95a5a6; --amber: #f39c12; }
+        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; flex-direction: row; min-height: 100vh; background: #eee; overflow-x: hidden; }
+        
+        #sidebar { width: 380px; background: var(--side); color: white; padding: 20px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
         .header-box { border-bottom: 2px solid var(--accent); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         h2 { font-size: 0.8rem; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         .reset-btn { background: var(--accent); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
+        
         .group { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; }
         .group-title { font-size: 0.65rem; font-weight: bold; color: #95a5a6; text-transform: uppercase; margin-bottom: 8px; border-left: 3px solid var(--accent); padding-left: 8px; }
         .control { margin-bottom: 6px; }
         label { display: block; font-size: 0.7rem; color: #ecf0f1; margin-bottom: 2px; }
         .val { float: right; color: var(--accent); font-weight: bold; }
         input[type=range] { width: 100%; cursor: pointer; height: 4px; accent-color: var(--accent); }
-        #main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 60px; gap: 10px; padding: 10px; }
-        .chart-card { background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        #content-wrapper { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
+        #main { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; padding-top: 60px; }
+        .chart-card { background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); min-height: 350px; }
         #narrative { grid-column: span 2; background: white; padding: 8px 15px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; }
+
+        /* Sección de Transmisión Multi-Shock */
+        #transmission-section { grid-column: span 2; padding: 20px; background: white; margin: 10px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--amber); }
+        .shock-card { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fff; }
+        .shock-header { font-weight: 800; color: #fff; padding: 5px 12px; border-radius: 4px; margin-bottom: 15px; display: inline-block; text-transform: uppercase; font-size: 0.75rem; }
+        .expansive-header { background: var(--green); }
+        .contractive-header { background: var(--red); }
+        .structural-header { background: var(--accent); }
+        
+        .transmission-step { margin-bottom: 10px; padding-left: 15px; border-left: 2px solid #ddd; font-size: 0.9rem; }
+        .step-id { font-weight: bold; color: var(--side); margin-right: 8px; }
+        .highlight { font-weight: bold; color: var(--side); }
     </style>
 </head>
 <body>
+
 <a href="../" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; z-index: 9999;">
   &larr; Volver al Menú
 </a>
+
 <div id="sidebar">
     <div class="header-box">
-        <h2>Simulador Principios de Macro</h2>
+        <h2>Simulador Macro</h2>
         <button class="reset-btn" onclick="resetToInitial()">REINICIAR</button>
     </div>
     <div id="controls-container"></div>
 </div>
 
-<div id="main">
-    <div id="c-keynes" class="chart-card"></div>
-    <div id="c-money" class="chart-card"></div>
-    <div id="c-public" class="chart-card"></div>
-    <div id="c-external" class="chart-card"></div>
-    <div id="narrative">
-        <div id="analysis-text">Modelo en equilibrio inicial.</div>
-        <div style="font-size: 0.7rem; color: var(--gray)">
-            <b>E0:</b> Inicial | <b>E1:</b> Final | <b>OM:</b> Oferta Monetaria | <b>DM:</b> Demanda Monetaria
+<div id="content-wrapper">
+    <div id="main">
+        <div id="c-keynes" class="chart-card"></div>
+        <div id="c-money" class="chart-card"></div>
+        <div id="c-public" class="chart-card"></div>
+        <div id="c-external" class="chart-card"></div>
+        
+        <div id="narrative">
+            <div id="analysis-text">Modelo en equilibrio inicial.</div>
+            <div style="font-size: 0.7rem; color: var(--gray)">
+                <b>E0:</b> Inicial | <b>E1:</b> Final | <b>OM:</b> Oferta | <b>DM:</b> Demanda
+            </div>
+        </div>
+
+        <div id="transmission-section">
+            <h3 style="margin-top: 0; color: var(--side); border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                MECANISMOS DE TRANSMISIÓN POR VARIABLE MODIFICADA
+            </h3>
+            <div id="transmission-content">
+                <p style="color: var(--gray)">Modifica uno o varios parámetros para activar el análisis detallado.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -56,15 +86,12 @@ const param_list = [
     { id: 'tr', label: 'TR (Transf.)', min: 0, max: 100, val: 30, step: 1, cat: 'Fiscal' },
     { id: 'g0', label: 'G0 (Gasto)', min: 0, max: 250, val: 110, step: 1, cat: 'Fiscal' },
     { id: 'n', label: 'n (Gasto inducido)', min: 0, max: 0.3, val: 0.02, step: 0.01, cat: 'Fiscal' },
-    
     { id: 'i0', label: 'I0 (Inversión Aut.)', min: 0, max: 200, val: 80, step: 1, cat: 'Inversión' },
     { id: 'b', label: 'b (Sens. r)', min: 1, max: 50, val: 20, step: 1, cat: 'Inversión' },
     { id: 'z', label: 'z (Inv. inducida)', min: 0, max: 0.4, val: 0.1, step: 0.01, cat: 'Inversión' },
-    
     { id: 'mon', label: 'M (Oferta)', min: 10, max: 600, val: 200, step: 1, cat: 'Monetario' },
     { id: 'k', label: 'k (L/Y)', min: 0.1, max: 1, val: 0.4, step: 0.01, cat: 'Monetario' },
     { id: 'h', label: 'h (L/r)', min: 1, max: 50, val: 25, step: 1, cat: 'Monetario' },
-    
     { id: 'x0', label: 'X0 (Exportaciones)', min: 0, max: 200, val: 70, step: 1, cat: 'Exterior' },
     { id: 'im0', label: 'IM0 (Import. Aut.)', min: 0, max: 150, val: 30, step: 1, cat: 'Exterior' },
     { id: 'm', label: 'm (Prop. a Importar)', min: 0, max: 0.5, val: 0.1, step: 0.01, cat: 'Exterior' }
@@ -74,7 +101,6 @@ let state0 = null;
 let initialValues = {};
 
 function solve(p) {
-    // A se calcula con el valor dinámico de im0
     const A = p.c0 + p.c*(p.tr - p.tf) + p.i0 + p.g0 + p.x0 - p.im0;
     const m_inv = 1 - (p.c*(1-p.t) + p.z + p.n - p.m);
     if (m_inv <= 0) return null;
@@ -88,23 +114,83 @@ function solve(p) {
              SSE: p.x0 - (p.im0 + p.m * Y) };
 }
 
+// GENERADOR DE NARRATIVA PARA UNA VARIABLE INDIVIDUAL
+function getShockNarrative(param, isIncrease) {
+    const inc = isIncrease ? "↑" : "↓";
+    const dec = isIncrease ? "↓" : "↑";
+    const label = param.label.split('(')[0].trim();
+    let steps = [];
+    let headerClass = "structural-header";
+    let headerText = `Cambio en ${param.id}`;
+
+    if (['c0', 'g0', 'i0', 'x0', 'tr', 'tf', 'im0'].includes(param.id)) {
+        let isExp = (['c0', 'g0', 'i0', 'x0', 'tr'].includes(param.id) && isIncrease) || (['tf', 'im0'].includes(param.id) && !isIncrease);
+        headerClass = isExp ? "expansive-header" : "contractive-header";
+        headerText = `Choque Fiscal/Autónomo ${isExp ? 'Expansivo' : 'Contractivo'} (${param.id})`;
+        
+        let s = isExp ? "↑" : "↓";
+        steps.push(`<span class="step-id">1.</span> El cambio en <span class="highlight">${label}</span> desplaza la Demanda Agregada (DA).`);
+        steps.push(`<span class="step-id">2.</span> Vía multiplicador, la <span class="highlight">Renta (Y) ${s}</span> en el mercado de bienes.`);
+        steps.push(`<span class="step-id">3.</span> El mayor nivel de actividad económica eleva la <span class="highlight">Demanda de Dinero (L) ${s}</span> por motivo transacciones.`);
+        steps.push(`<span class="step-id">4.</span> Ante una oferta monetaria fija, surge un exceso de demanda de dinero que hace <span class="highlight">subir los tipos de interés (r) ${s}</span>.`);
+        steps.push(`<span class="step-id">5.</span> <b>Efecto Expulsión:</b> El alza de tipos desincentiva la inversión privada, frenando parcialmente el aumento inicial de la renta.`);
+    } 
+    else if (param.id === 'mon') {
+        headerClass = isIncrease ? "expansive-header" : "contractive-header";
+        headerText = `Política Monetaria ${isIncrease ? 'Expansiva' : 'Contractiva'} (M)`;
+        let s = isIncrease ? "↑" : "↓";
+        let r_s = isIncrease ? "↓" : "↑";
+        steps.push(`<span class="step-id">1.</span> El cambio en la <span class="highlight">Oferta Monetaria (M)</span> rompe el equilibrio del mercado de dinero.`);
+        steps.push(`<span class="step-id">2.</span> El exceso de liquidez provoca un ajuste inmediato en el <span class="highlight">Tipo de Interés (r) ${r_s}</span>.`);
+        steps.push(`<span class="step-id">3.</span> La caída del coste del capital estimula la <span class="highlight">Inversión privada (I) ${s}</span>.`);
+        steps.push(`<span class="step-id">4.</span> El aumento de la inversión desplaza la DA hacia arriba, elevando la <span class="highlight">Renta final (Y) ${s}</span>.`);
+    }
+    else if (['c', 't', 'n', 'z', 'm'].includes(param.id)) {
+        let grows = (['c', 'z', 'n'].includes(param.id) && isIncrease) || (['t', 'm'].includes(param.id) && !isIncrease);
+        headerText = `Cambio Estructural: Sensibilidad (${param.id})`;
+        steps.push(`<span class="step-id">1.</span> La modificación de <span class="highlight">${label}</span> altera la pendiente de la función de Demanda Agregada.`);
+        steps.push(`<span class="step-id">2.</span> Esto cambia la potencia del <span class="highlight">Multiplicador Keynesiano</span>, haciendo a la economía ${grows ? 'más' : 'menos'} sensible a shocks externos.`);
+        steps.push(`<span class="step-id">3.</span> La curva IS rota, redefiniendo el punto donde el mercado de bienes y dinero alcanzan el equilibrio conjunto.`);
+    }
+
+    return `
+        <div class="shock-card">
+            <div class="shock-header ${headerClass}">${headerText} ${inc}</div>
+            ${steps.map(s => `<div class="transmission-step">${s}</div>`).join('')}
+        </div>`;
+}
+
 function update() {
     const currP = {};
-    let hasChanged = false;
+    let changedParams = [];
     param_list.forEach(d => {
         const val = parseFloat(document.getElementById(d.id).value);
         currP[d.id] = val;
         document.getElementById('v_'+d.id).innerText = val.toFixed(d.step < 1 ? 2 : 0);
-        if (Math.abs(val - initialValues[d.id]) > 0.0001) hasChanged = true;
+        if (state0 && Math.abs(val - initialValues[d.id]) > 0.0001) {
+            changedParams.push({param: d, isInc: val > initialValues[d.id]});
+        }
     });
 
     const state1 = solve(currP);
-    if (!state0) state0 = state1;
+    if (!state0) {
+        state0 = state1;
+        initialValues = {...currP};
+    }
+    
     const Y_teo = (state1.A - state1.p.b * state0.r) / state1.m_inv;
+    render(state0, state1, Y_teo, changedParams.length > 0);
 
-    render(state0, state1, Y_teo, hasChanged);
+    // Actualizar sección de transmisión con todos los shocks detectados
+    const transContainer = document.getElementById('transmission-content');
+    if (changedParams.length === 0) {
+        transContainer.innerHTML = '<p style="color: var(--gray)">Estado inicial. Mueve los sliders para ver el análisis de transmisión.</p>';
+    } else {
+        transContainer.innerHTML = changedParams.map(cp => getShockNarrative(cp.param, cp.isInc)).join('');
+    }
 }
 
+// [Funciones de Render Plotly se mantienen igual que en tu código base]
 function render(s0, s1, Y_teo, hasChanged) {
     const xK = [0, 1500];
     const config = { responsive: true, displayModeBar: false };
@@ -130,12 +216,7 @@ function render(s0, s1, Y_teo, hasChanged) {
         shapesK.push({ type: 'line', x0: Y_teo, x1: Y_teo, y0: Y_teo, y1: da1_val_at_Yteo, line: { color: '#e67e22', width: 2.5, dash: 'dot' } });
         annotationsK.push({ x: Y_teo, y: (Y_teo + da1_val_at_Yteo)/2, text: s1.Y < Y_teo ? "Expulsión" : "Atracción", showarrow: false, xanchor: 'right', xshift: -12, font: {size: 11, color: '#e67e22', weight: 'bold'} });
     }
-
-    Plotly.newPlot('c-keynes', tracesK, {
-        title: 'Mercado de Bienes', margin: {l:40, r:20, t:40, b:40},
-        xaxis: {range: [0, 1500], title: 'Y'}, yaxis: {range: [0, 1500], title: 'DA'},
-        shapes: shapesK, annotations: annotationsK
-    }, config);
+    Plotly.newPlot('c-keynes', tracesK, { title: 'Mercado de Bienes', margin: {l:40, r:20, t:40, b:40}, xaxis: {range:[0,1500]}, yaxis: {range:[0,1500]}, shapes: shapesK, annotations: annotationsK }, config);
 
     // 2. MERCADO DE DINERO
     const l_vals = Plotly.d3.range(0, 801, 10);
@@ -145,7 +226,6 @@ function render(s0, s1, Y_teo, hasChanged) {
         { x: l_vals, y: rL0, line: { color: '#bdc3c7' }, name: 'DM0' },
         { x: [s0.mp], y: [s0.r], mode: 'markers', marker: { size: 8, color: '#7f8c8d' }, name: 'E0' }
     ];
-
     if (hasChanged) {
         const rL1 = l_vals.map(l => Math.max(0, (s1.p.k * s1.Y - l) / s1.p.h));
         const L_inducida = s1.p.k * s1.Y - s1.p.h * s0.r;
@@ -158,14 +238,13 @@ function render(s0, s1, Y_teo, hasChanged) {
     }
     Plotly.newPlot('c-money', tracesM, { title: 'Mercado de Dinero', xaxis: {range:[0,800], title: 'M/P'}, yaxis: {title:'r'}, margin: {l:40, r:20, t:40, b:40} }, config);
 
-    // 3. SALDOS (SSP y SSE)
+    // 3. SALDOS SECTORIALES
     function drawBalance(div, s0_obj, s1_obj, func0, func1, title, labelBase) {
         const traces = [
             { x: xK, y: xK.map(func0), line: { color: '#bdc3c7', width: 2 }, name: labelBase + '0' },
             { x: [s0_obj.Y], y: [s0_obj.val], mode: 'markers', marker: { size: 8, color: '#7f8c8d' }, name: 'E0' }
         ];
         let shapes = []; let annotations = [];
-
         if (hasChanged) {
             const color = s1_obj.val < 0 ? '#e74c3c' : '#27ae60';
             traces.push(
@@ -175,26 +254,12 @@ function render(s0, s1, Y_teo, hasChanged) {
             shapes.push({ type: 'line', x0: s1_obj.Y, x1: s1_obj.Y, y0: 0, y1: s1_obj.val, line: { color: color, width: 4 } });
             annotations.push({ x: s1_obj.Y, y: s1_obj.val/2, text: s1_obj.val<0?'DÉFICIT':'SUPERÁVIT', showarrow:false, xanchor:'left', xshift:12, font:{color:color, size:10, weight:'bold'} });
         }
-
-        Plotly.newPlot(div, traces, { 
-            title: title, yaxis: {range: [-250, 250]}, margin: {l:50, r:60, t:40, b:40},
-            shapes: shapes, annotations: annotations
-        }, config);
+        Plotly.newPlot(div, traces, { title: title, yaxis: {range: [-250, 250]}, margin: {l:50, r:60, t:40, b:40}, shapes: shapes, annotations: annotations }, config);
     }
+    drawBalance('c-public', {Y: s0.Y, val: s0.SSP}, {Y: s1.Y, val: s1.SSP}, (x) => s0.p.t*x + s0.p.tf - (s0.p.g0 + s0.p.n*x + s0.p.tr), (x) => s1.p.t*x + s1.p.tf - (s1.p.g0 + s1.p.n*x + s1.p.tr), 'Saldo del Sector Público', 'SSP');
+    drawBalance('c-external', {Y: s0.Y, val: s0.SSE}, {Y: s1.Y, val: s1.SSE}, (x) => s0.p.x0 - (s0.p.im0 + s0.p.m*x), (x) => s1.p.x0 - (s1.p.im0 + s1.p.m*x), 'Saldo del Sector Exterior', 'SSE');
 
-    drawBalance('c-public', {Y: s0.Y, val: s0.SSP}, {Y: s1.Y, val: s1.SSP}, 
-        (x) => s0.p.t*x + s0.p.tf - (s0.p.g0 + s0.p.n*x + s0.p.tr),
-        (x) => s1.p.t*x + s1.p.tf - (s1.p.g0 + s1.p.n*x + s1.p.tr), 
-        'Saldo del Sector Público', 'SSP');
-
-    drawBalance('c-external', {Y: s0.Y, val: s0.SSE}, {Y: s1.Y, val: s1.SSE}, 
-        (x) => s0.p.x0 - (s0.p.im0 + s0.p.m*x),
-        (x) => s1.p.x0 - (s1.p.im0 + s1.p.m*x), 
-        'Saldo del Sector Exterior', 'SSE');
-
-    document.getElementById('analysis-text').innerHTML = hasChanged ? 
-        `E1: Y = <b>${s1.Y.toFixed(1)}</b> | r = <b>${s1.r.toFixed(2)}%</b>` : 
-        "Estado inicial cargado. Mueva un parámetro para ver el impacto.";
+    document.getElementById('analysis-text').innerHTML = hasChanged ? `E1: Y = <b>${s1.Y.toFixed(1)}</b> | r = <b>${s1.r.toFixed(2)}%</b>` : "Estado inicial cargado.";
 }
 
 function resetToInitial() {
@@ -210,7 +275,6 @@ function init() {
             currentCat = p.cat;
             const h = document.createElement('div'); h.className = 'group-title'; h.innerText = currentCat; container.appendChild(h);
         }
-        initialValues[p.id] = p.val;
         const div = document.createElement('div'); div.className = 'control';
         div.innerHTML = `<label>${p.label}: <span class="val" id="v_${p.id}">${p.val}</span></label>
                          <input type="range" id="${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}">`;
@@ -222,6 +286,4 @@ function init() {
 window.onload = init;
 </script>
 </body>
-
 </html>
-
