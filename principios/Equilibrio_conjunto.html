@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulador Principios de Macroeconomía: Equilibrio conjunto bienes y dinero</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root { --bg: #fdfdfd; --side: #1a2a3a; --accent: #3498db; --red: #e74c3c; --green: #27ae60; --gray: #95a5a6; }
+        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; background: #eee; overflow: hidden; }
+        #sidebar { width: 380px; background: var(--side); color: white; padding: 20px; overflow-y: auto; }
+        .header-box { border-bottom: 2px solid var(--accent); margin-bottom: 15px; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        h2 { font-size: 0.8rem; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .reset-btn { background: var(--accent); color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; font-weight: bold; }
+        .group { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .group-title { font-size: 0.65rem; font-weight: bold; color: #95a5a6; text-transform: uppercase; margin-bottom: 8px; border-left: 3px solid var(--accent); padding-left: 8px; }
+        .control { margin-bottom: 6px; }
+        label { display: block; font-size: 0.7rem; color: #ecf0f1; margin-bottom: 2px; }
+        .val { float: right; color: var(--accent); font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; height: 4px; accent-color: var(--accent); }
+        #main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 60px; gap: 10px; padding: 10px; }
+        .chart-card { background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #narrative { grid-column: span 2; background: white; padding: 8px 15px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<a href="../../index.html" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; border: 1px solid #334155; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#0f172a'" onmouseout="this.style.backgroundColor='#1e293b'">
+  &larr; Volver al Menú
+</a>
+<div id="sidebar">
+    <div class="header-box">
+        <h2>Simulador Principios de Macro</h2>
+        <button class="reset-btn" onclick="resetToInitial()">REINICIAR</button>
+    </div>
+    <div id="controls-container"></div>
+</div>
+
+<div id="main">
+    <div id="c-keynes" class="chart-card"></div>
+    <div id="c-money" class="chart-card"></div>
+    <div id="c-public" class="chart-card"></div>
+    <div id="c-external" class="chart-card"></div>
+    <div id="narrative">
+        <div id="analysis-text">Modelo en equilibrio inicial.</div>
+        <div style="font-size: 0.7rem; color: var(--gray)">
+            <b>E0:</b> Inicial | <b>E1:</b> Final | <b>OM:</b> Oferta Monetaria | <b>DM:</b> Demanda Monetaria
+        </div>
+    </div>
+</div>
+
+<script>
+const param_list = [
+    { id: 'c0', label: 'C0 (Consumo Aut.)', min: 0, max: 200, val: 100, step: 1, cat: 'Fiscal' },
+    { id: 'c', label: 'c (Propensión)', min: 0, max: 0.95, val: 0.8, step: 0.01, cat: 'Fiscal' },
+    { id: 't', label: 't (Impuestos)', min: 0, max: 0.5, val: 0.2, step: 0.01, cat: 'Fiscal' },
+    { id: 'tf', label: 'T (Fijos)', min: 0, max: 100, val: 40, step: 1, cat: 'Fiscal' },
+    { id: 'tr', label: 'TR (Transf.)', min: 0, max: 100, val: 30, step: 1, cat: 'Fiscal' },
+    { id: 'g0', label: 'G0 (Gasto)', min: 0, max: 250, val: 110, step: 1, cat: 'Fiscal' },
+    { id: 'n', label: 'n (Gasto inducido)', min: 0, max: 0.3, val: 0.02, step: 0.01, cat: 'Fiscal' },
+    
+    { id: 'i0', label: 'I0 (Inversión Aut.)', min: 0, max: 200, val: 80, step: 1, cat: 'Inversión' },
+    { id: 'b', label: 'b (Sens. r)', min: 1, max: 50, val: 20, step: 1, cat: 'Inversión' },
+    { id: 'z', label: 'z (Inv. inducida)', min: 0, max: 0.4, val: 0.1, step: 0.01, cat: 'Inversión' },
+    
+    { id: 'mon', label: 'M (Oferta)', min: 10, max: 600, val: 200, step: 1, cat: 'Monetario' },
+    { id: 'k', label: 'k (L/Y)', min: 0.1, max: 1, val: 0.4, step: 0.01, cat: 'Monetario' },
+    { id: 'h', label: 'h (L/r)', min: 1, max: 50, val: 25, step: 1, cat: 'Monetario' },
+    
+    { id: 'x0', label: 'X0 (Exportaciones)', min: 0, max: 200, val: 70, step: 1, cat: 'Exterior' },
+    { id: 'im0', label: 'IM0 (Import. Aut.)', min: 0, max: 150, val: 30, step: 1, cat: 'Exterior' },
+    { id: 'm', label: 'm (Prop. a Importar)', min: 0, max: 0.5, val: 0.1, step: 0.01, cat: 'Exterior' }
+];
+
+let state0 = null;
+let initialValues = {};
+
+function solve(p) {
+    // A se calcula con el valor dinámico de im0
+    const A = p.c0 + p.c*(p.tr - p.tf) + p.i0 + p.g0 + p.x0 - p.im0;
+    const m_inv = 1 - (p.c*(1-p.t) + p.z + p.n - p.m);
+    if (m_inv <= 0) return null;
+    const mp = p.mon / 1; 
+    const Y_std = (A + (p.b / p.h) * mp) / (m_inv + (p.b * p.k / p.h));
+    const r_std = (p.k * Y_std - mp) / p.h;
+    let Y, r;
+    if (r_std <= 0) { Y = A / m_inv; r = 0; } else { Y = Y_std; r = r_std; }
+    return { Y, r, A, m_inv, mp, p, 
+             SSP: p.t * Y + p.tf - (p.g0 + p.n * Y + p.tr),
+             SSE: p.x0 - (p.im0 + p.m * Y) };
+}
+
+function update() {
+    const currP = {};
+    let hasChanged = false;
+    param_list.forEach(d => {
+        const val = parseFloat(document.getElementById(d.id).value);
+        currP[d.id] = val;
+        document.getElementById('v_'+d.id).innerText = val.toFixed(d.step < 1 ? 2 : 0);
+        if (Math.abs(val - initialValues[d.id]) > 0.0001) hasChanged = true;
+    });
+
+    const state1 = solve(currP);
+    if (!state0) state0 = state1;
+    const Y_teo = (state1.A - state1.p.b * state0.r) / state1.m_inv;
+
+    render(state0, state1, Y_teo, hasChanged);
+}
+
+function render(s0, s1, Y_teo, hasChanged) {
+    const xK = [0, 1500];
+    const config = { responsive: true, displayModeBar: false };
+
+    // 1. CRUZ KEYNESIANA
+    const da0 = xK.map(x => (s0.A - s0.p.b * s0.r) + (1 - s0.m_inv) * x);
+    const tracesK = [
+        { x: xK, y: xK, line: { color: '#eee', dash: 'dot' }, showlegend: false },
+        { x: xK, y: da0, line: { color: '#e74c3c', width: 2 }, name: 'DA0' },
+        { x: [s0.Y], y: [s0.Y], mode: 'markers', marker: {color:'#7f8c8d', size:8}, name: 'E0' }
+    ];
+    let shapesK = []; let annotationsK = [];
+
+    if (hasChanged) {
+        const da1_val_at_Yteo = (s1.A - s1.p.b * s1.r) + (1 - s1.m_inv) * Y_teo;
+        const da1 = xK.map(x => (s1.A - s1.p.b * s1.r) + (1 - s1.m_inv) * x);
+        const daTeo = xK.map(x => (s1.A - s1.p.b * s0.r) + (1 - s1.m_inv) * x);
+        tracesK.push(
+            { x: xK, y: daTeo, line: { color: '#bdc3c7', dash: 'dash' }, name: 'Sin Exp.' },
+            { x: xK, y: da1, line: { color: '#3498db', width: 3 }, name: 'DA1' },
+            { x: [s1.Y], y: [s1.Y], mode: 'markers', marker: {color:'#3498db', size:12}, name: 'E1' }
+        );
+        shapesK.push({ type: 'line', x0: Y_teo, x1: Y_teo, y0: Y_teo, y1: da1_val_at_Yteo, line: { color: '#e67e22', width: 2.5, dash: 'dot' } });
+        annotationsK.push({ x: Y_teo, y: (Y_teo + da1_val_at_Yteo)/2, text: s1.Y < Y_teo ? "Expulsión" : "Atracción", showarrow: false, xanchor: 'right', xshift: -12, font: {size: 11, color: '#e67e22', weight: 'bold'} });
+    }
+
+    Plotly.newPlot('c-keynes', tracesK, {
+        title: 'Mercado de Bienes', margin: {l:40, r:20, t:40, b:40},
+        xaxis: {range: [0, 1500], title: 'Y'}, yaxis: {range: [0, 1500], title: 'DA'},
+        shapes: shapesK, annotations: annotationsK
+    }, config);
+
+    // 2. MERCADO DE DINERO
+    const l_vals = Plotly.d3.range(0, 801, 10);
+    const rL0 = l_vals.map(l => Math.max(0, (s0.p.k * s0.Y - l) / s0.p.h));
+    const tracesM = [
+        { x: [s0.mp, s0.mp], y: [0, 15], line: { color: '#bdc3c7', width: 2 }, name: 'OM0' },
+        { x: l_vals, y: rL0, line: { color: '#bdc3c7' }, name: 'DM0' },
+        { x: [s0.mp], y: [s0.r], mode: 'markers', marker: { size: 8, color: '#7f8c8d' }, name: 'E0' }
+    ];
+
+    if (hasChanged) {
+        const rL1 = l_vals.map(l => Math.max(0, (s1.p.k * s1.Y - l) / s1.p.h));
+        const L_inducida = s1.p.k * s1.Y - s1.p.h * s0.r;
+        tracesM.push(
+            { x: [s1.mp, s1.mp], y: [0, 15], line: { color: '#3498db', width: 2, dash: 'dash' }, name: 'OM1' },
+            { x: l_vals, y: rL1, line: { color: '#2c3e50', width: 2 }, name: 'DM1' },
+            { x: [s1.mp], y: [s1.r], mode: 'markers', marker: { size: 12, color: '#3498db' }, name: 'E1' },
+            { x: [L_inducida], y: [s0.r], mode: 'markers', marker: { size: 10, color: '#f1c40f', symbol: 'x' }, name: 'Presión r', showlegend: false }
+        );
+    }
+    Plotly.newPlot('c-money', tracesM, { title: 'Mercado de Dinero', xaxis: {range:[0,800], title: 'M/P'}, yaxis: {title:'r'}, margin: {l:40, r:20, t:40, b:40} }, config);
+
+    // 3. SALDOS (SSP y SSE)
+    function drawBalance(div, s0_obj, s1_obj, func0, func1, title, labelBase) {
+        const traces = [
+            { x: xK, y: xK.map(func0), line: { color: '#bdc3c7', width: 2 }, name: labelBase + '0' },
+            { x: [s0_obj.Y], y: [s0_obj.val], mode: 'markers', marker: { size: 8, color: '#7f8c8d' }, name: 'E0' }
+        ];
+        let shapes = []; let annotations = [];
+
+        if (hasChanged) {
+            const color = s1_obj.val < 0 ? '#e74c3c' : '#27ae60';
+            traces.push(
+                { x: xK, y: xK.map(func1), line: { color: '#2c3e50', width: 2, dash: 'dash' }, name: labelBase + '1' },
+                { x: [s1_obj.Y], y: [s1_obj.val], mode: 'markers', marker: { size: 12, color: color }, name: 'E1' }
+            );
+            shapes.push({ type: 'line', x0: s1_obj.Y, x1: s1_obj.Y, y0: 0, y1: s1_obj.val, line: { color: color, width: 4 } });
+            annotations.push({ x: s1_obj.Y, y: s1_obj.val/2, text: s1_obj.val<0?'DÉFICIT':'SUPERÁVIT', showarrow:false, xanchor:'left', xshift:12, font:{color:color, size:10, weight:'bold'} });
+        }
+
+        Plotly.newPlot(div, traces, { 
+            title: title, yaxis: {range: [-250, 250]}, margin: {l:50, r:60, t:40, b:40},
+            shapes: shapes, annotations: annotations
+        }, config);
+    }
+
+    drawBalance('c-public', {Y: s0.Y, val: s0.SSP}, {Y: s1.Y, val: s1.SSP}, 
+        (x) => s0.p.t*x + s0.p.tf - (s0.p.g0 + s0.p.n*x + s0.p.tr),
+        (x) => s1.p.t*x + s1.p.tf - (s1.p.g0 + s1.p.n*x + s1.p.tr), 
+        'Saldo del Sector Público', 'SSP');
+
+    drawBalance('c-external', {Y: s0.Y, val: s0.SSE}, {Y: s1.Y, val: s1.SSE}, 
+        (x) => s0.p.x0 - (s0.p.im0 + s0.p.m*x),
+        (x) => s1.p.x0 - (s1.p.im0 + s1.p.m*x), 
+        'Saldo del Sector Exterior', 'SSE');
+
+    document.getElementById('analysis-text').innerHTML = hasChanged ? 
+        `E1: Y = <b>${s1.Y.toFixed(1)}</b> | r = <b>${s1.r.toFixed(2)}%</b>` : 
+        "Estado inicial cargado. Mueva un parámetro para ver el impacto.";
+}
+
+function resetToInitial() {
+    param_list.forEach(p => document.getElementById(p.id).value = initialValues[p.id]);
+    update();
+}
+
+function init() {
+    const container = document.getElementById('controls-container');
+    let currentCat = "";
+    param_list.forEach(p => {
+        if (p.cat !== currentCat) {
+            currentCat = p.cat;
+            const h = document.createElement('div'); h.className = 'group-title'; h.innerText = currentCat; container.appendChild(h);
+        }
+        initialValues[p.id] = p.val;
+        const div = document.createElement('div'); div.className = 'control';
+        div.innerHTML = `<label>${p.label}: <span class="val" id="v_${p.id}">${p.val}</span></label>
+                         <input type="range" id="${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}">`;
+        container.appendChild(div);
+    });
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
+    update();
+}
+window.onload = init;
+</script>
+</body>
+</html>
