@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador IS-LM: Estática Comparativa</title>
+    <!-- Cargar Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        h1 { margin: 0; color: var(--primary-color); font-size: 1.8rem; }
+        .subtitle { color: #7f8c8d; font-size: 1rem; margin-top: 5px; }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 350px;
+            gap: 20px;
+            flex-grow: 1;
+            height: calc(100vh - 120px);
+            min-height: 600px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e1e4e8;
+        }
+
+        .card-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f2f5;
+            color: var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Controles */
+        .controls-container { overflow-y: auto; }
+        .control-group { margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; }
+        .control-group label { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px; color: #495057; }
+        .control-value { color: var(--accent-color); font-family: monospace; font-size: 1rem; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent-color); }
+
+        /* Gráfico */
+        .graph-container { position: relative; background: white; }
+        #islm-graph { width: 100%; height: 100%; }
+
+        /* Botón Reset estilizado */
+        .btn-reset {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn-reset:hover { background-color: #2980b9; }
+
+        /* Resultados */
+        .results-container { overflow-y: auto; }
+        .result-box { background-color: #f1f9fe; border-left: 4px solid var(--accent-color); padding: 12px; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
+        .result-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .result-item.equilibrium { font-weight: bold; font-size: 1.1rem; color: #2c3e50; border-top: 1px solid #dcebf7; padding-top: 8px; margin-top: 8px; }
+        
+        .narrative-box { background-color: #fff8e1; border-left: 4px solid #f1c40f; padding: 15px; font-size: 0.95rem; line-height: 1.5; border-radius: 0 4px 4px 0; }
+        .narrative-title { font-weight: bold; color: #d35400; margin-bottom: 8px; display: block; border-bottom: 1px solid rgba(211, 84, 0, 0.2); padding-bottom: 5px; }
+        .narrative-step { margin-bottom: 8px; }
+        .narrative-step strong { color: #e67e22; }
+
+        @media (max-width: 1200px) {
+            .main-container { grid-template-columns: 300px 1fr; grid-template-rows: auto auto; }
+            .results-container { grid-column: 1 / -1; flex-direction: row; gap: 20px; }
+        }
+        @media (max-width: 768px) { .main-container { grid-template-columns: 1fr; height: auto; } }
+    </style>
+</head>
+<body>
+<a href="../../index.html" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; border: 1px solid #334155; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#0f172a'" onmouseout="this.style.backgroundColor='#1e293b'">
+  &larr; Volver al Menú
+</a>
+    <header>
+        <h1>Simulador IS-LM: Estática Comparativa</h1>
+        <div class="subtitle">Análisis de desplazamientos y cambios de pendiente</div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- COLUMNA 1: CONTROLES -->
+        <div class="card controls-container">
+            <div class="card-header">
+                <span>Variables Exógenas</span>
+            </div>
+            <div id="sliders-wrapper"></div>
+        </div>
+
+        <!-- COLUMNA 2: GRÁFICO -->
+        <div class="card graph-container">
+            <div class="card-header">
+                <span>Gráfico IS-LM</span>
+                <!-- Botón de Reset MOVIDO AQUÍ -->
+                <button onclick="resetValues()" class="btn-reset">Restaurar Valores</button>
+            </div>
+            <div id="islm-graph"></div>
+        </div>
+
+        <!-- COLUMNA 3: RESULTADOS -->
+        <div class="card results-container">
+            <div class="card-header">Análisis de Equilibrio</div>
+            
+            <div class="result-box">
+                <div class="result-item equilibrium">
+                    <span>Producción (Y):</span>
+                    <span id="res-Ye">0.00</span>
+                </div>
+                <div class="result-item equilibrium">
+                    <span>Tipo de Interés (r):</span>
+                    <span id="res-re">0.00</span>
+                </div>
+            </div>
+
+            <div style="font-size:0.85rem; font-weight:bold; color:#7f8c8d; margin-bottom:5px;">Descomposición de la Demanda:</div>
+            <div class="result-box" style="background-color: #f8f9fa; border-color: #bdc3c7;">
+                <div class="result-item"><span>Consumo (C):</span> <span id="res-C">0</span></div>
+                <div class="result-item"><span>Inversión (I):</span> <span id="res-I">0</span></div>
+                <div class="result-item"><span>Gasto (G):</span> <span id="res-G">0</span></div>
+                <div class="result-item"><span>Exp. Netas (NX):</span> <span id="res-NX">0</span></div>
+            </div>
+
+            <div class="card-header" style="margin-top: 10px; border-bottom: none; padding-bottom: 0;">Mecanismo de Transmisión</div>
+            <div id="narrative-content" class="narrative-box">
+                <span class="narrative-title">Estado Inicial</span>
+                Mueva los sliders para ver la explicación detallada paso a paso del ajuste económico.
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. CONFIGURACIÓN Y PARÁMETROS CALIBRADOS ---
+        // Basados en tu archivo adjunto 'webapp graph.html'
+        const paramsConfig = {
+            // Sector Bienes
+            C0:  { label: "Consumo Aut. (C₀)", base: 200, step: 10, min: 0, max: 500 },
+            c1:  { label: "PMC (c₁)", base: 0.5, step: 0.01, min: 0.01, max: 0.99 },
+            T0:  { label: "Impuestos Aut. (T₀)", base: 100, step: 10, min: 0, max: 500 },
+            t:   { label: "Tipo Impositivo (t)", base: 0.2, step: 0.01, min: 0, max: 1.0 },
+            TR0: { label: "Transferencias (TR₀)", base: 100, step: 5, min: 0, max: 300 }, // Base 100
+            G0:  { label: "Gasto Público (G₀)", base: 250, step: 10, min: 0, max: 600 }, 
+            n:   { label: "Sens. Gasto (n)", base: 0, step: 0.01, min: 0, max: 0.5 },
+            
+            // Inversión
+            I0:  { label: "Inversión Aut. (I₀)", base: 230, step: 10, min: 0, max: 500 }, // Base 230
+            b:   { label: "Sens. I a Interés (b)", base: 4000, step: 50, min: 500, max: 8000 },
+            z:   { label: "Sens. I a Renta (z)", base: 0.1, step: 0.01, min: 0, max: 0.5 },
+            
+            // Sector Exterior
+            X0:  { label: "Exportaciones (X₀)", base: 150, step: 10, min: 0, max: 500 },
+            IM0: { label: "Importaciones Aut. (IM₀)", base: 50, step: 5, min: 0, max: 300 },
+            m:   { label: "Prop. Importar (m)", base: 0.1, step: 0.01, min: 0, max: 1.0 },
+            
+            // Mercado Dinero
+            k:   { label: "Sens. L a Renta (k)", base: 0.5, step: 0.01, min: 0.1, max: 2.0 },
+            h:   { label: "Sens. L a Interés (h)", base: 4000, step: 50, min: 500, max: 8000 },
+            MP:  { label: "Oferta Monetaria (M/P)", base: 100, step: 10, min: 10, max: 500 } // Base 100
+        };
+
+        let currentParams = {};
+        let baseParams = {}; 
+        let lastChangedParam = null;
+
+        function initParams() {
+            for (const key in paramsConfig) {
+                currentParams[key] = paramsConfig[key].base;
+                baseParams[key] = paramsConfig[key].base; 
+            }
+        }
+
+        // --- 2. GENERACIÓN DE SLIDERS ---
+        function renderSliders() {
+            const wrapper = document.getElementById('sliders-wrapper');
+            wrapper.innerHTML = '';
+            
+            const groups = {
+                'Política Fiscal': ['G0', 'T0', 't', 'TR0'],
+                'Comportamiento Privado': ['C0', 'c1', 'I0', 'b', 'z'],
+                'Sector Exterior': ['X0', 'IM0', 'm', 'n'],
+                'Política Monetaria': ['MP', 'k', 'h']
+            };
+
+            for (const [groupName, keys] of Object.entries(groups)) {
+                const groupDiv = document.createElement('div');
+                groupDiv.innerHTML = `<div style="font-size:0.75rem; text-transform:uppercase; color:#95a5a6; margin:10px 0 5px 0; font-weight:800; letter-spacing:0.5px;">${groupName}</div>`;
+                
+                keys.forEach(key => {
+                    const cfg = paramsConfig[key];
+                    const div = document.createElement('div');
+                    div.className = 'control-group';
+                    div.innerHTML = `
+                        <label for="slider-${key}">
+                            <span>${cfg.label}</span>
+                            <span id="val-${key}" class="control-value">${formatValue(currentParams[key], key)}</span>
+                        </label>
+                        <input type="range" id="slider-${key}" 
+                            min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${currentParams[key]}"
+                            oninput="updateParam('${key}', this.value)">
+                    `;
+                    groupDiv.appendChild(div);
+                });
+                wrapper.appendChild(groupDiv);
+            }
+        }
+
+        function formatValue(val, key) {
+            if (['c1', 't', 'm', 'n', 'z'].includes(key)) return val.toFixed(2);
+            return val.toFixed(0);
+        }
+
+        // --- 3. LÓGICA DEL MODELO ---
+        function solveISLM(p) {
+            const rho = 1 - p.c1 * (1 - p.t) + p.m - p.n - p.z;
+            if (Math.abs(rho) < 0.001) return null;
+
+            const alpha = 1 / rho;
+            const A0 = p.C0 + p.c1 * (p.TR0 - p.T0) + p.I0 + p.G0 + (p.X0 - p.IM0);
+            
+            const denom = p.h + alpha * p.b * p.k;
+            if (Math.abs(denom) < 0.001) return null;
+
+            const gamma = (alpha * p.h) / denom;
+            const beta = (alpha * p.b) / denom;
+
+            const Ye = gamma * A0 + beta * p.MP;
+            const re = (p.k / p.h) * Ye - (1 / p.h) * p.MP;
+
+            const T = p.T0 + p.t * Ye;
+            const C = p.C0 + p.c1 * (Ye - T + p.TR0);
+            const I = p.I0 - p.b * re + p.z * Ye;
+            const G = p.G0 + p.n * Ye;
+            const NX = (p.X0 - p.IM0) - p.m * Ye;
+
+            return { Ye, re, alpha, A0, C, I, G, NX, T, rho };
+        }
+
+        // --- 4. ACTUALIZACIÓN Y GESTIÓN ---
+        function updateParam(key, value) {
+            currentParams[key] = parseFloat(value);
+            document.getElementById(`val-${key}`).innerText = formatValue(currentParams[key], key);
+            lastChangedParam = key;
+            updateSimulation();
+        }
+
+        function resetValues() {
+            initParams();
+            renderSliders();
+            lastChangedParam = null;
+            updateSimulation();
+            document.getElementById('narrative-content').innerHTML = `
+                <span class="narrative-title">Reinicio Completo</span>
+                Valores restaurados al caso base. Mueva un slider para comenzar.
+            `;
+        }
+
+        function updateSimulation() {
+            const currentEq = solveISLM(currentParams);
+            const baseEq = solveISLM(baseParams); 
+
+            if (!currentEq || currentEq.rho <= 0) {
+                document.getElementById('narrative-content').innerHTML = `
+                    <span class="narrative-title" style="color:red">⚠️ Sistema Inestable</span>
+                    La combinación de parámetros ha generado un multiplicador inestable o negativo.
+                `;
+                return;
+            }
+
+            drawGraph(baseEq, currentEq);
+            
+            document.getElementById('res-Ye').innerText = currentEq.Ye.toFixed(1);
+            document.getElementById('res-re').innerText = (currentEq.re * 100).toFixed(2) + '%';
+            document.getElementById('res-C').innerText = currentEq.C.toFixed(0);
+            document.getElementById('res-I').innerText = currentEq.I.toFixed(0);
+            document.getElementById('res-G').innerText = currentEq.G.toFixed(0);
+            document.getElementById('res-NX').innerText = currentEq.NX.toFixed(0);
+
+            if (lastChangedParam) {
+                generateNarrative(lastChangedParam, currentParams, baseParams, currentEq);
+            }
+        }
+
+        // --- 5. GRÁFICO (CON VISUALIZACIÓN DE CROWDING OUT) ---
+        function drawGraph(baseEq, newEq) {
+            const pBase = baseParams;
+            const pNew = currentParams;
+
+            const xMax = 1750; 
+            const yMax = 0.20; 
+            const xValues = [0, xMax];
+
+            // Curvas Base
+            const is_b_y0 = baseEq.A0 / pBase.b;
+            const is_b_yMax = (baseEq.A0 / pBase.b) - (xMax / (baseEq.alpha * pBase.b));
+            const lm_b_y0 = -(1/pBase.h) * pBase.MP;
+            const lm_b_yMax = (pBase.k / pBase.h) * xMax - (1/pBase.h) * pBase.MP;
+
+            // Curvas Nuevas
+            const is_n_y0 = newEq.A0 / pNew.b;
+            const is_n_yMax = (newEq.A0 / pNew.b) - (xMax / (newEq.alpha * pNew.b));
+            const lm_n_y0 = -(1/pNew.h) * pNew.MP;
+            const lm_n_yMax = (pNew.k / pNew.h) * xMax - (1/pNew.h) * pNew.MP;
+
+            const traces = [
+                { x: xValues, y: [is_b_y0, is_b_yMax], mode: 'lines', name: 'IS Original', line: { color: '#bdc3c7', width: 2 }, hoverinfo: 'none' },
+                { x: xValues, y: [lm_b_y0, lm_b_yMax], mode: 'lines', name: 'LM Original', line: { color: '#bdc3c7', width: 2 }, hoverinfo: 'none' },
+                { x: xValues, y: [is_n_y0, is_n_yMax], mode: 'lines', name: 'IS Nueva', line: { color: '#e74c3c', width: 3, dash: 'dash' } },
+                { x: xValues, y: [lm_n_y0, lm_n_yMax], mode: 'lines', name: 'LM Nueva', line: { color: '#3498db', width: 3, dash: 'dash' } },
+                { x: [baseEq.Ye], y: [baseEq.re], mode: 'markers', name: 'E₀', marker: { color: '#7f8c8d', size: 10, symbol: 'circle-open' } },
+                { x: [newEq.Ye], y: [newEq.re], mode: 'markers', name: 'E₁ (Final)', marker: { color: '#2c3e50', size: 14, symbol: 'star' } }
+            ];
+
+            const layoutAnnotations = [];
+
+            // --- LÓGICA DE VISUALIZACIÓN DEL EFECTO EXPULSIÓN (CROWDING OUT) ---
+            // Solo se activa si es un shock en la IS (Fiscal o Demanda Agregada)
+            const isISShock = ['G0', 'T0', 'TR0', 'I0', 'C0', 'X0', 'c1', 't'].includes(lastChangedParam);
+            
+            if (isISShock && lastChangedParam !== null) {
+                // Calculamos la renta teórica si el tipo de interés NO hubiera cambiado (r = r_base)
+                // Usando la nueva IS: Y = alpha_new * (A0_new - b * r_base)
+                const Y_theoretical = newEq.alpha * (newEq.A0 - pNew.b * baseEq.re);
+                
+                // Solo mostrar si hay una diferencia perceptible
+                if (Math.abs(Y_theoretical - newEq.Ye) > 10) {
+                    
+                    // Trace para el punto teórico
+                    traces.push({
+                        x: [Y_theoretical],
+                        y: [baseEq.re],
+                        mode: 'markers',
+                        name: 'E (Teórico Mult. Simple)',
+                        marker: { color: '#e67e22', size: 10, symbol: 'circle', opacity: 0.7 }
+                    });
+
+                    // Determinar si es Expulsión (r sube, perdemos Y) o Atracción (r baja, ganamos Y)
+                    const isCrowdingOut = newEq.Ye < Y_theoretical;
+                    const labelText = isCrowdingOut ? "Efecto Expulsión (Crowding Out)" : "Efecto Atracción (Crowding In)";
+                    const arrowColor = isCrowdingOut ? "#c0392b" : "#27ae60";
+
+                    // Añadir flecha indicativa
+                    layoutAnnotations.push({
+                        x: newEq.Ye,
+                        y: baseEq.re, // Flecha a la altura del interés original para limpieza visual
+                        xref: 'x', yref: 'y',
+                        ax: Y_theoretical, ay: baseEq.re,
+                        axref: 'x', ayref: 'y',
+                        showarrow: true,
+                        arrowhead: 2,
+                        arrowsize: 1,
+                        arrowwidth: 2,
+                        arrowcolor: arrowColor,
+                        text: labelText,
+                        font: { color: arrowColor, size: 11 },
+                        yshift: 15 // Elevar un poco el texto sobre la flecha
+                    });
+
+                    // Línea punteada vertical para conectar E_final con la flecha visualmente si r ha cambiado mucho
+                    if (Math.abs(newEq.re - baseEq.re) > 0.005) {
+                        traces.push({
+                            x: [newEq.Ye, newEq.Ye],
+                            y: [newEq.re, baseEq.re],
+                            mode: 'lines',
+                            showlegend: false,
+                            line: { color: arrowColor, dash: 'dot', width: 1 }
+                        });
+                    }
+                }
+            }
+
+            const layout = {
+                margin: { t: 40, r: 20, b: 40, l: 60 },
+                xaxis: { title: 'Producción / Renta (Y)', range: [0, xMax], fixedrange: true, zeroline: true, showgrid: true },
+                yaxis: { title: 'Tipo de Interés (r)', range: [0, yMax], fixedrange: true, tickformat: '.1%', zeroline: true, showgrid: true },
+                legend: { orientation: 'h', y: 1.1, x: 0.1 },
+                hovermode: 'closest',
+                annotations: layoutAnnotations
+            };
+
+            Plotly.newPlot('islm-graph', traces, layout, { responsive: true, displayModeBar: false });
+        }
+
+        // --- 6. NARRATIVA AVANZADA (PEDAGÓGICA) ---
+        function generateNarrative(param, currentP, baseP, currentEq) {
+            const val = currentP[param];
+            const baseVal = baseP[param];
+            const diff = val - baseVal;
+
+            if (Math.abs(diff) < 0.0001) {
+                document.getElementById('narrative-content').innerHTML = "Valores originales restaurados.";
+                return;
+            }
+
+            const direction = diff > 0 ? "Aumento" : "Disminución";
+            const isPositiveShock = diff > 0;
+            let html = "";
+            let title = "";
+
+            // CLASIFICACIÓN DEL SHOCK
+            const isFiscal = ['G0', 'T0', 'TR0', 't'].includes(param);
+            const isMonetary = ['MP'].includes(param);
+            const isPrivateShock = ['C0', 'I0', 'X0'].includes(param);
+            const isSlopeChange = ['c1', 'b', 'h', 'k', 'm', 'n', 'z'].includes(param);
+
+            // 1. TÍTULO DEL EVENTO
+            if (isFiscal) {
+                const isExpansion = (['G0', 'TR0'].includes(param) && isPositiveShock) || (['T0', 't'].includes(param) && !isPositiveShock);
+                title = `Política Fiscal ${isExpansion ? 'Expansiva' : 'Contractiva'} (${param})`;
+            } else if (isMonetary) {
+                title = `Política Monetaria ${isPositiveShock ? 'Expansiva' : 'Contractiva'} (${param})`;
+            } else if (isPrivateShock) {
+                title = `Shock de Demanda Agregada (${param})`;
+            } else {
+                title = `Cambio Estructural / Sensibilidad (${param})`;
+            }
+
+            html += `<span class="narrative-title">${title}</span>`;
+
+            // 2. EXPLICACIÓN PASO A PASO
+            
+            // --- CASO A: DESPLAZAMIENTOS DE IS (Fiscal o Shock Privado) ---
+            if (['G0', 'T0', 'TR0', 'I0', 'C0', 'X0'].includes(param)) {
+                const isRightShift = (['G0', 'TR0', 'I0', 'C0', 'X0'].includes(param) && isPositiveShock) || (['T0'].includes(param) && !isPositiveShock);
+                const varName = paramsConfig[param].label;
+
+                html += `<div class="narrative-step"><strong>1. Impacto Inicial (Mercado de Bienes):</strong><br>`;
+                html += `El ${direction.toLowerCase()} de ${varName} provoca un cambio directo en la Demanda Agregada Autónoma. Esto genera un <b>desplazamiento de la curva IS hacia la ${isRightShift ? 'derecha' : 'izquierda'}</b>.</div>`;
+
+                html += `<div class="narrative-step"><strong>2. Ajuste Dinámico (Mercado de Dinero):</strong><br>`;
+                html += `Al cambiar la renta (Y), cambia la demanda de dinero por motivo transacción ($L_T$).<br>`;
+                if (isRightShift) {
+                    html += `Como la renta sube, la demanda de dinero aumenta ($L > M/P$). Para conseguir liquidez, los agentes venden bonos, lo que hace caer su precio y <b>subir el tipo de interés (r↑)</b>.`;
+                } else {
+                    html += `Como la renta baja, sobra dinero ($M/P > L$). Los agentes compran bonos, subiendo su precio y <b>bajando el tipo de interés (r↓)</b>.`;
+                }
+                html += `</div>`;
+
+                html += `<div class="narrative-step"><strong>3. Resultado Final (Efecto Retroalimentación):</strong><br>`;
+                if (isRightShift) {
+                    html += `El aumento de los tipos de interés desincentiva la Inversión Privada. <br>El gráfico muestra una flecha roja indicando el <b>Efecto Crowding Out</b>: la diferencia entre la renta teórica (si <i>r</i> no subiera) y la renta final real.`;
+                } else {
+                    html += `La bajada de los tipos de interés estimula la Inversión Privada. <br>El gráfico muestra una flecha verde indicando el <b>Efecto Crowding In</b>: la renta 'extra' ganada gracias a la bajada de tipos.`;
+                }
+                html += `</div>`;
+            }
+
+            // --- CASO B: DESPLAZAMIENTOS DE LM (Política Monetaria) ---
+            else if (param === 'MP') {
+                const isExpansion = isPositiveShock;
+                
+                html += `<div class="narrative-step"><strong>1. Impacto Inicial (Mercado de Dinero):</strong><br>`;
+                html += `El ${direction.toLowerCase()} de la Oferta Monetaria Real rompe el equilibrio de cartera. La curva LM se desplaza hacia la <b>${isExpansion ? 'derecha' : 'izquierda'}</b>.</div>`;
+
+                html += `<div class="narrative-step"><strong>2. Ajuste de Tipos (Efecto Liquidez):</strong><br>`;
+                if (isExpansion) {
+                    html += `Hay un exceso de oferta de dinero ($M/P > L$). El público intenta deshacerse del dinero comprando bonos. Esto eleva el precio de los bonos y provoca una <b>caída inmediata del tipo de interés (r↓)</b>.`;
+                } else {
+                    html += `Hay un exceso de demanda de dinero ($L > M/P$). El público vende bonos para obtener liquidez. Esto reduce el precio de los bonos y provoca una <b>subida del tipo de interés (r↑)</b>.`;
+                }
+                html += `</div>`;
+
+                html += `<div class="narrative-step"><strong>3. Transmisión Real (Economía Real):</strong><br>`;
+                if (isExpansion) {
+                    html += `La bajada de tipos de interés reduce el coste del capital, estimulando la <b>Inversión Privada (I↑)</b> y el consumo. Esto aumenta la Demanda Agregada y, vía multiplicador, eleva la Producción de equilibrio (Y↑).`;
+                } else {
+                    html += `La subida de tipos encarece el crédito, contrayendo la <b>Inversión Privada (I↓)</b>. Esto reduce la Demanda Agregada y hace caer la Producción de equilibrio (Y↓).`;
+                }
+                html += `</div>`;
+            }
+
+            // --- CASO C: CAMBIOS DE PENDIENTE (c1, t, b, k, h...) ---
+            else {
+                html += `<div class="narrative-step"><strong>1. Cambio Estructural:</strong><br>`;
+                html += `El ${direction.toLowerCase()} de ${paramsConfig[param].label} no desplaza las curvas paralelamente, sino que <b>cambia su pendiente (inclinación)</b>.</div>`;
+                
+                html += `<div class="narrative-step"><strong>2. Implicación Económica:</strong><br>`;
+                if (['b', 'h'].includes(param)) {
+                    html += `Al cambiar la sensibilidad a los tipos de interés, cambia la <b>eficacia de las políticas</b>. <br>Por ejemplo, una curva IS más plana (mayor <i>b</i>) hace que la Política Monetaria sea más potente (la inversión reacciona más fuerte a cambios en <i>r</i>).`;
+                } else if (['c1', 't'].includes(param)) {
+                    html += `Al cambiar la propensión al consumo o los impuestos, cambia el valor del <b>Multiplicador</b>. Un multiplicador mayor hace que cualquier shock de gasto tenga un efecto amplificado sobre la economía.`;
+                }
+                html += `</div>`;
+            }
+
+            document.getElementById('narrative-content').innerHTML = html;
+        }
+
+        initParams();
+        renderSliders();
+        setTimeout(updateSimulation, 200);
+        window.onresize = function() { Plotly.Plots.resize('islm-graph'); };
+
+    </script>
+</body>
+</html>
