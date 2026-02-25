@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Equilibrio Conjunto Avanzada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .section-title { @apply text-xl font-bold text-slate-800 border-b-2 border-indigo-500 pb-2 mb-6 uppercase tracking-tight; }
+        .input-card { @apply bg-white p-3 rounded-lg shadow-sm border border-gray-200 hover:border-indigo-300 transition; }
+        .label-text { @apply text-[10px] font-bold text-gray-400 uppercase mb-1 block; }
+        .input-style { @apply w-full border border-gray-300 rounded p-1 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none; }
+        .res-card { @apply p-4 rounded-xl border transition-all; }
+        .res-label { @apply text-xs font-semibold uppercase opacity-80; }
+        .res-val { @apply text-2xl font-black; }
+        .val-up { @apply text-green-600 font-bold; }
+        .val-down { @apply text-red-600 font-bold; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 font-sans text-slate-900">
+<a href="../../index.html" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; border: 1px solid #334155; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#0f172a'" onmouseout="this.style.backgroundColor='#1e293b'">
+  &larr; Volver al Menú
+</a>
+    <div class="max-w-7xl mx-auto space-y-10">
+        <div class="text-center bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+            <h1 class="text-4xl font-black text-slate-800 tracking-tighter">CALCULADORA MACROECONÓMICA</h1>
+            <p class="text-indigo-600 font-bold uppercase text-sm tracking-widest">Equilibrio Conjunto: Bienes y Dinero</p>
+        </div>
+
+        <section>
+            <h2 class="section-title">1. Parámetros del Modelo</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="initial-params-grid"></div>
+            <button onclick="initCalc()" class="mt-6 w-full bg-slate-800 hover:bg-black text-white font-black py-4 rounded-xl shadow-xl transition-all transform hover:scale-[1.01] active:scale-95">
+                GENERAR EQUILIBRIO INICIAL
+            </button>
+        </section>
+
+        <section id="sec-results-init" class="hidden animate-in fade-in duration-500">
+            <h2 class="section-title">2. Resultados del Equilibrio Inicial</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-4" id="grid-main-res"></div>
+                <div class="bg-indigo-900 text-white p-6 rounded-3xl shadow-xl" id="grid-intercepts">
+                    <h3 class="text-indigo-300 font-black uppercase text-xs mb-4">Puntos de Corte y Geometría</h3>
+                    <div class="space-y-3" id="intercepts-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-params-new" class="hidden">
+            <h2 class="section-title text-amber-600 border-amber-500">3. Introducir Cambios</h2>
+            <div class="bg-amber-100 border-l-4 border-amber-500 p-4 mb-6 rounded-r-xl text-amber-900 text-sm">
+                <strong>Instrucciones:</strong> Escriba el nuevo valor total de la variable. Las celdas vacías mantendrán el valor inicial.
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="new-params-grid"></div>
+            <button onclick="compareCalc()" class="mt-6 w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-4 rounded-xl shadow-xl transition-all">
+                CALCULAR NUEVO EQUILIBRIO Y COMPARAR
+            </button>
+        </section>
+
+        <section id="sec-comparison" class="hidden">
+            <h2 class="section-title text-emerald-600 border-emerald-500">4. Comparativa y Efecto Expulsión</h2>
+            <div class="overflow-hidden rounded-3xl border border-slate-200 shadow-2xl bg-white">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-900 text-white text-[10px] uppercase">
+                        <tr>
+                            <th class="p-5">Variable / Punto de Corte</th>
+                            <th class="p-5 text-right">Inicial</th>
+                            <th class="p-5 text-right">Nuevo</th>
+                            <th class="p-5 text-right">Δ Absoluta</th>
+                            <th class="p-5 text-right">%</th>
+                            <th id="col-exp-head" class="p-5 text-right bg-orange-600">Sin Efecto Expulsión</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparison-body" class="text-sm font-medium"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const config = [
+            { id: 'c0', label: 'C₀ (Consumo Aut.)', val: 1900, g: 'B' },
+            { id: 'c', label: 'c (Prop. Marg.)', val: 0.8, g: 'B' },
+            { id: 'i0', label: 'I₀ (Inv. Aut.)', val: 4600, g: 'B' },
+            { id: 'b', label: 'b (Sensib. r)', val: 30, g: 'B' },
+            { id: 'z', label: 'z (Sensib. Y)', val: 0, g: 'B' },
+            { id: 'g0', label: 'G₀ (Gasto)', val: 3000, g: 'B' },
+            { id: 'tr', label: 'TR (Transf.)', val: 2000, g: 'B' },
+            { id: 't0', label: 'T₀ (Imp. Fijo)', val: 0, g: 'B' },
+            { id: 't', label: 't (Tasa Imp.)', val: 0.2, g: 'B' },
+            { id: 'n', label: 'n (Sensib. Y)', val: 0, g: 'B' },
+            { id: 'k', label: 'k (Demanda Y)', val: 1, g: 'D' },
+            { id: 'h', label: 'h (Demanda r)', val: 100, g: 'D' },
+            { id: 'ms', label: 'M/P (Oferta)', val: 24500, g: 'D' },
+            { id: 'x0', label: 'X₀ (Export.)', val: 5000, g: 'B' },
+            { id: 'im0', label: 'IM₀ (Imp. Aut.)', val: 500, g: 'B' },
+            { id: 'm', label: 'm (Prop. IM)', val: 0.24, g: 'B' }
+        ];
+
+        let baseEq = null;
+        let baseP = {};
+
+        function buildInputs() {
+            const gi = document.getElementById('initial-params-grid');
+            const gn = document.getElementById('new-params-grid');
+            config.forEach(p => {
+                gi.innerHTML += `<div class="input-card"><label class="label-text">${p.label}</label><input id="init_${p.id}" type="number" step="any" value="${p.val}" class="input-style"></div>`;
+                gn.innerHTML += `<div class="input-card border-amber-200"><label class="label-text text-amber-600">${p.label}</label><input id="new_${p.id}" type="number" step="any" placeholder="${p.val}" class="input-style"></div>`;
+            });
+        }
+
+        function calculate(p) {
+            const alpha = 1 / (1 - p.c*(1 - p.t) - p.n - p.z + p.m);
+            const a0 = p.c0 + p.c*p.tr - p.c*p.t0 + p.i0 + p.g0 + p.x0 - p.im0;
+            const r = (alpha * a0 - p.ms / p.k) / (p.h / p.k + alpha * p.b);
+            const y = (1 / p.k) * (p.ms + p.h * r);
+            
+            // Niveles de componentes
+            const c_lvl = p.c0 + p.c*(1 - p.t)*y + p.c*p.tr - p.c*p.t0;
+            const i_lvl = p.i0 - p.b*r + p.z*y;
+            const g_lvl = p.g0 + p.n*y;
+            const im_lvl = p.im0 + p.m*y;
+            const xn_lvl = p.x0 - im_lvl;
+
+            return {
+                y, r, alpha, a0, c_lvl, i_lvl, g_lvl, im_lvl, xn_lvl,
+                ssp: p.t*y + p.t0 - g_lvl - p.tr,
+                sse: xn_lvl,
+                cruzK: a0 - p.b*r,
+                dm_y0: p.ms / p.k,
+                dm_r_eq: (p.k / p.h) * y,
+                c_aut: p.c0 + p.c*p.tr - p.c*p.t0,
+                ssp_v: -p.g0 - p.tr + p.t0,
+                ssp_h: (p.g0 + p.tr - p.t0) / (p.t - p.n),
+                sse_v: p.x0 - p.im0,
+                sse_h: (p.x0 - p.im0) / p.m,
+                p: {...p}
+            };
+        }
+
+        function initCalc() {
+            config.forEach(p => baseP[p.id] = parseFloat(document.getElementById(`init_${p.id}`).value));
+            baseEq = calculate(baseP);
+            
+            // Render Agregados
+            const gRes = document.getElementById('grid-main-res');
+            const mainRows = [
+                { l: 'Renta (Y*)', v: baseEq.y, c: 'bg-white border-slate-900 text-slate-900' },
+                { l: 'Tipo Interés (r*)', v: baseEq.r, c: 'bg-white border-slate-900 text-slate-900', u: '%' },
+                { l: 'Consumo (C)', v: baseEq.c_lvl, c: 'bg-blue-50 border-blue-200' },
+                { l: 'Inversión (I)', v: baseEq.i_lvl, c: 'bg-indigo-50 border-indigo-200' },
+                { l: 'Saldo Público (SSP)', v: baseEq.ssp, c: 'bg-emerald-50 border-emerald-200' },
+                { l: 'Saldo Exterior (SSE)', v: baseEq.sse, c: 'bg-purple-50 border-purple-200' }
+            ];
+            gRes.innerHTML = mainRows.map(r => `
+                <div class="res-card border-2 ${r.c}">
+                    <p class="res-label text-slate-500">${r.l}</p>
+                    <p class="res-val">${r.v.toFixed(2)}${r.u || ''}</p>
+                </div>
+            `).join('');
+
+            // Render Interceptos
+            const intList = document.getElementById('intercepts-list');
+            const intercepts = [
+                { l: 'Multiplicador (α)', v: baseEq.alpha.toFixed(3) },
+                { l: 'Cruz Keynesiana (A₀ - br)', v: baseEq.cruzK.toFixed(2) },
+                { l: 'Demanda Dinero: Eje horizontal (r=0)', v: baseEq.dm_y0.toFixed(2) },
+                { l: 'Demanda Dinero: Eje vertical (DM=0)', v: baseEq.dm_r_eq.toFixed(2) },
+                { l: 'Consumo Autónomo (C_aut)', v: baseEq.c_aut.toFixed(2) },
+                { l: 'SSP: Corte Vertical', v: baseEq.ssp_v.toFixed(2) },
+                { l: 'SSP: Corte Horizontal (Y)', v: baseEq.ssp_h.toFixed(2) },
+                { l: 'SSE: Corte Vertical', v: baseEq.sse_v.toFixed(2) },
+                { l: 'SSE: Corte Horizontal (Y)', v: baseEq.sse_h.toFixed(2) }
+            ];
+            intList.innerHTML = intercepts.map(i => `
+                <div class="flex justify-between border-b border-indigo-800 pb-1 text-xs">
+                    <span class="opacity-70 font-bold">${i.l}:</span>
+                    <span class="font-mono">${i.v}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('sec-results-init').classList.remove('hidden');
+            document.getElementById('sec-params-new').classList.remove('hidden');
+        }
+
+        function compareCalc() {
+            let newP = {};
+            let isGoods = false;
+            config.forEach(p => {
+                const v = document.getElementById(`new_${p.id}`).value;
+                newP[p.id] = v !== "" ? parseFloat(v) : baseP[p.id];
+                if (v !== "" && p.g === 'B') isGoods = true;
+            });
+            const newEq = calculate(newP);
+            const yNoExp = newEq.alpha * (newEq.a0 - newP.b * baseEq.r);
+
+            const tableRows = [
+                { l: 'Renta de Equilibrio (Y*)', k: 'y' },
+                { l: 'Tipo de Interés (r*)', k: 'r', u: '%' },
+                { l: 'Nivel de Consumo (C)', k: 'c_lvl' },
+                { l: 'Nivel de Inversión (I)', k: 'i_lvl' },
+                { l: 'Saldo Presupuestario (SSP)', k: 'ssp' },
+                { l: 'Saldo Exterior (SSE)', k: 'sse' },
+                { l: 'Corte Cruz Keynesiana', k: 'cruzK' },
+                { l: 'Dinero: DM (r=0)', k: 'dm_y0' },
+                { l: 'Dinero: r (DM=0)', k: 'dm_r_eq' },
+                { l: 'SSP: Corte Vertical', k: 'ssp_v' },
+                { l: 'SSP: Corte Horizontal', k: 'ssp_h' },
+                { l: 'SSE: Corte Vertical', k: 'sse_v' },
+                { l: 'SSE: Corte Horizontal', k: 'sse_h' }
+            ];
+
+            const body = document.getElementById('comparison-body');
+            body.innerHTML = tableRows.map(r => {
+                const v1 = baseEq[r.k], v2 = newEq[r.k];
+                const d = v2 - v1, p = (d / Math.abs(v1)) * 100;
+                const cls = d > 0.001 ? 'val-up' : (d < -0.001 ? 'val-down' : 'text-slate-400');
+                const exp = (r.k === 'y' && isGoods) ? `<span class="font-black text-orange-600">${yNoExp.toFixed(2)}</span>` : '<span class="text-slate-300">---</span>';
+                
+                return `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                        <td class="p-4 text-slate-600 font-bold">${r.l}</td>
+                        <td class="p-4 text-right">${v1.toFixed(2)}${r.u||''}</td>
+                        <td class="p-4 text-right font-black text-indigo-700">${v2.toFixed(2)}${r.u||''}</td>
+                        <td class="p-4 text-right ${cls}">${d > 0 ? '+' : ''}${d.toFixed(2)}</td>
+                        <td class="p-4 text-right ${cls}">${d > 0 ? '+' : ''}${p.toFixed(2)}%</td>
+                        <td class="p-4 text-right bg-orange-50">${exp}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('sec-comparison').classList.remove('hidden');
+        }
+
+        buildInputs();
+    </script>
+</body>
+</html>

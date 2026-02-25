@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simulador Mundell-Fleming</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --card: #ffffff; --muted: #f5f7fb; }
+    .card { background: var(--card); border-radius: 1rem; box-shadow: 0 6px 24px rgba(0,0,0,0.06); }
+    .muted { background: var(--muted); }
+    .grid-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; }
+    .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .table th, .table td { padding: .5rem .625rem; border-bottom: 1px solid #e8edf3; }
+    .table th { text-align:left; font-weight:600; background:#f8fafc; }
+    .badge { font-size:.75rem; padding:.125rem .5rem; border-radius:.5rem; background:#eef2ff; }
+    .hint { font-size:.8rem; color:#475569; }
+    .error { color:#b91c1c; }
+    details>summary { cursor:pointer; }
+    .section-title{ font-weight:700; font-size:1.125rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+<a href="../../index.html" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; border: 1px solid #334155; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#0f172a'" onmouseout="this.style.backgroundColor='#1e293b'">
+  &larr; Volver al Menú
+</a>
+  <header class="px-6 py-4 sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <h1 class="text-2xl font-bold">Simulador del Modelo Mundell-Fleming</h1>
+      <span class="badge">IS-LM-BP | movilidad perfecta</span>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-6 space-y-6">
+    <!-- PARÁMETROS -->
+    <section class="card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="section-title">Parámetros del modelo</h2>
+        <div class="flex gap-2">
+          <button id="btnDefaults" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Cargar valores por defecto</button>
+          <button id="btnRunTests" class="px-3 py-1.5 rounded-lg bg-slate-700 text-white hover:bg-slate-800">Probar tests</button>
+        </div>
+      </div>
+      <p class="hint mb-4">Introduce números. Validaciones: 0 ≤ c1 ≤ 1, 0 ≤ t ≤ 1. Acepta coma o punto decimal. Redondeo a dos decimales.</p>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="muted rounded-xl p-4 space-y-3">
+          <h3 class="font-semibold">Componentes autónomos</h3>
+          <div class="grid-col">
+            <label class="block">C<sub>0</sub> <input id="C0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">T<sub>0</sub> <input id="T0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">TR<sub>0</sub> <input id="TR0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">I<sub>0</sub> <input id="I0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">G<sub>0</sub> <input id="G0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">X<sub>0</sub> <input id="X0" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">IM<sub>0</sub> <input id="IM0" type="number" step="any" class="w-full card p-2" /></label>
+          </div>
+        </div>
+
+        <div class="muted rounded-xl p-4 space-y-3">
+          <h3 class="font-semibold">Propensiones y sensibilidades</h3>
+          <div class="grid-col">
+            <label class="block">c<sub>1</sub> (0-1) <input id="c1" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">t (0-1) <input id="t" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">b <input id="b" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">m <input id="m" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">n <input id="n" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">k <input id="k" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">h <input id="h" type="number" step="any" class="w-full card p-2" /></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-4 mt-4">
+        <div class="muted rounded-xl p-4 space-y-3">
+          <h3 class="font-semibold">Mercado de dinero</h3>
+          <div class="grid-col">
+            <label class="block">M/P <input id="MP" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">r* (si flexible) <input id="rstar" type="number" step="any" class="w-full card p-2" /></label>
+          </div>
+        </div>
+        <div class="muted rounded-xl p-4 space-y-3">
+          <h3 class="font-semibold">Sector exterior</h3>
+          <div class="grid-col">
+            <label class="block">v<sub>x</sub> <input id="vx" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">v<sub>m</sub> <input id="vm" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">R (si fijo) <input id="Rfix" type="number" step="any" class="w-full card p-2" /></label>
+          </div>
+        </div>
+        <div class="muted rounded-xl p-4 space-y-3">
+          <h3 class="font-semibold">Precios</h3>
+          <div class="grid-col">
+            <label class="block">P (doméstico) <input id="P" type="number" step="any" class="w-full card p-2" /></label>
+            <label class="block">P<sub>x</sub> (extranjero) <input id="Px" type="number" step="any" class="w-full card p-2" /></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button id="btnCalcular" class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Calcular equilibrio</button>
+        <span id="inputError" class="error"></span>
+      </div>
+    </section>
+
+    <!-- RESULTADOS BASE -->
+    <section class="card p-5">
+      <h2 class="section-title mb-3">Equilibrio base</h2>
+      <div id="equilibrioBase" class="overflow-auto"></div>
+      <details class="mt-3">
+        <summary class="font-medium">Detalles intermedios (A<sub>0</sub>, ρ, α, β, γ)</summary>
+        <div id="detallesIntermedios" class="mono p-3"></div>
+      </details>
+    </section>
+
+    <!-- SHOCKS -->
+    <section class="card p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="section-title">Simulación de shocks</h2>
+        <span class="hint">Introduce nuevos valores (nivel) y pulsa "Simular shock".</span>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-4 mt-3">
+        <div class="muted rounded-xl p-4 space-y-2">
+          <h3 class="font-semibold">Política fiscal</h3>
+          <div class="grid-col">
+            <label class="block">G<sub>0</sub>' <input id="sG0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">TR<sub>0</sub>' <input id="sTR0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">t' (0-1) <input id="st" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">T<sub>0</sub>' <input id="sT0" type="number" step="any" class="w-full card p-2"/></label>
+          </div>
+        </div>
+        <div class="muted rounded-xl p-4 space-y-2">
+          <h3 class="font-semibold">Política monetaria</h3>
+          <div class="grid-col">
+            <label class="block">M/P' <input id="sMP" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">r*' (si se modifica) <input id="srstar" type="number" step="any" class="w-full card p-2"/></label>
+          </div>
+        </div>
+        <div class="muted rounded-xl p-4 space-y-2">
+          <h3 class="font-semibold">Estructural</h3>
+          <div class="grid-col">
+            <label class="block">C<sub>0</sub>' <input id="sC0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">I<sub>0</sub>' <input id="sI0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">b' <input id="sb" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">m' <input id="sm" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">k' <input id="sk" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">h' <input id="sh" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">X<sub>0</sub>' <input id="sX0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">IM<sub>0</sub>' <input id="sIM0" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">v<sub>x</sub>' <input id="svx" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">v<sub>m</sub>' <input id="svm" type="number" step="any" class="w-full card p-2"/></label>
+            <label class="block">R fijo (si régimen fijo) <input id="sRfix" type="number" step="any" class="w-full card p-2"/></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mt-4">
+        <button id="btnShock" class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Simular shock</button>
+        <span id="shockError" class="error"></span>
+      </div>
+
+      <div id="resultadoShock" class="mt-4 overflow-auto"></div>
+      <div id="shocks-results" class="mt-3 p-4 muted rounded-xl"></div>
+    </section>
+
+    <!-- TEST OUTPUT -->
+    <section class="card p-5">
+      <h2 class="section-title mb-3">Tests automáticos</h2>
+      <div id="testsOut" class="text-sm"></div>
+    </section>
+  </main>
+
+  <footer class="py-8 text-center text-sm text-slate-500">
+    © 2025 Mundell-Fleming Simulator • Docencia
+  </footer>
+
+<script>
+// ===== Utilidades =====
+const $ = (id) => document.getElementById(id);
+const round2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
+function parseNum(v) {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim().replace(',', '.');
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ===== Lectura de parámetros =====
+function getParams(fromShock = false) {
+  const p = {
+    C0: parseNum($('C0').value), T0: parseNum($('T0').value), TR0: parseNum($('TR0').value), I0: parseNum($('I0').value), G0: parseNum($('G0').value), X0: parseNum($('X0').value), IM0: parseNum($('IM0').value),
+    c1: parseNum($('c1').value), t: parseNum($('t').value), b: parseNum($('b').value), m: parseNum($('m').value), n: parseNum($('n').value), k: parseNum($('k').value), h: parseNum($('h').value),
+    MP: parseNum($('MP').value), rstar: parseNum($('rstar').value), vx: parseNum($('vx').value), vm: parseNum($('vm').value), Rfix: parseNum($('Rfix').value), P: parseNum($('P').value), Px: parseNum($('Px').value),
+  };
+  if (fromShock) {
+    const overrides = {
+      G0: parseNum($('sG0').value), TR0: parseNum($('sTR0').value), t: parseNum($('st').value), T0: parseNum($('sT0').value), MP: parseNum($('sMP').value), rstar: parseNum($('srstar').value),
+      C0: parseNum($('sC0').value), I0: parseNum($('sI0').value), b: parseNum($('sb').value), m: parseNum($('sm').value), k: parseNum($('sk').value), h: parseNum($('sh').value), X0: parseNum($('sX0').value), IM0: parseNum($('sIM0').value),
+      vx: parseNum($('svx').value), vm: parseNum($('svm').value), Rfix: parseNum($('sRfix').value),
+    };
+    for (const [k, v] of Object.entries(overrides)) if (v !== null) p[k] = v;
+  }
+  return p;
+}
+
+function validate(p) {
+  const req = ['C0','T0','TR0','I0','G0','X0','IM0','c1','t','b','m','n','k','h','MP','vx','vm','P','Px'];
+  for (const key of req) { if (p[key] === null) return `Falta el valor de ${key} o no es numérico.`; }
+  if (p.c1 < 0 || p.c1 > 1) return 'c1 debe estar en [0,1].';
+  if (p.t < 0 || p.t > 1) return 't debe estar en [0,1].';
+  return null;
+}
+
+// ===== Intermedios =====
+function intermediates(p) {
+  const v = p.vx + p.vm; // sensibilidad neta a R
+  const A0 = p.C0 + p.c1 * (p.TR0 - p.T0) + p.I0 + p.G0 + (p.X0 - p.IM0);
+  const rho = 1 - p.c1 * (1 - p.t) - p.n + p.m;
+  const alpha = 1 / rho;
+  const gamma = (alpha * p.h) / (p.h + alpha * p.b * p.k);
+  const beta = (alpha * p.b) / (p.h + alpha * p.b * p.k);
+  return { v, A0, rho, alpha, gamma, beta };
+}
+
+// ===== Equilibrios =====
+function equilibriumFlexible(p) {
+  if (p.rstar === null) throw new Error('Para régimen flexible necesitas r*.');
+  const { v, A0, alpha } = intermediates(p);
+  const r = p.rstar;
+  const Y = (p.MP + p.h * r) / p.k; // LM
+  const R = (Y - alpha * A0 + alpha * p.b * r) / (alpha * v); // IS
+  const E = (R * p.P) / p.Px;
+  const T = p.T0 + p.t * Y;
+  const C = p.C0 + p.c1 * (Y - T + p.TR0);
+  const I = p.I0 - p.b * r;
+  const G = p.G0 + p.n * Y;
+  const NX = p.X0 - p.IM0 + v * R - p.m * Y;
+  const Sp = -p.C0 + (1 - p.c1) * (Y - T + p.TR0);
+  const SSP = (p.T0 + p.t * Y) - (p.G0 + p.n * Y) - p.TR0;
+  const SSE = (p.X0 - p.IM0) - p.m * Y + v * R;
+  return { Y, r, R, E, C, I, G, NX, Sp, SSP, SSE, MP: p.MP };
+}
+
+// Régimen fijo = E nominal fijo = E0 (del equilibrio original). r=r*; R se ajusta coherente con P,Px; M/P endógeno.
+function equilibriumFixedGivenE(p, E0) {
+  if (p.rstar === null) throw new Error('Para régimen fijo con movilidad perfecta, r* es obligatorio (r=r*).');
+  const { v, A0, alpha } = intermediates(p);
+  const r = p.rstar;
+  const R = (E0 * p.P) / p.Px; // coherencia nominal-real
+  const Y = alpha * (A0 - p.b * r + v * R);
+  const E = E0;
+  const MPeq = p.k * Y - p.h * r; // oferta monetaria requerida
+  const T = p.T0 + p.t * Y;
+  const C = p.C0 + p.c1 * (Y - T + p.TR0);
+  const I = p.I0 - p.b * r;
+  const G = p.G0 + p.n * Y;
+  const NX = p.X0 - p.IM0 + v * R - p.m * Y;
+  const Sp = -p.C0 + (1 - p.c1) * (Y - T + p.TR0);
+  const SSP = (p.T0 + p.t * Y) - (p.G0 + p.n * Y) - p.TR0;
+  const SSE = (p.X0 - p.IM0) - p.m * Y + v * R;
+  return { Y, r, R, E, C, I, G, NX, Sp, SSP, SSE, MP: MPeq };
+}
+
+// ===== Render =====
+function renderEquilibrium(containerId, res, title='') {
+  const el = $(containerId);
+  if (!res) { el.innerHTML = ''; return; }
+  const p = getParams(false);
+  const { A0, alpha, beta, gamma } = intermediates(p);
+  const keys = ['Y','r','R','E','C','I','G','NX','Sp','SSP','SSE','MP'];
+  const labels = { Y:'Y (renta)', r:'r (tipo interés)', R:'R (tipo cambio real)', E:'E (tipo cambio nominal)', C:'C', I:'I', G:'G', NX:'NX', Sp:'Ahorro privado', SSP:'Saldo sector público', SSE:'Saldo sector exterior', MP:'M/P' };
+  const rows = keys.map(k => `<tr><th>${labels[k]}</th><td class="mono">${round2(res[k])}</td></tr>`).join('');
+  const extras = `<div class="grid md:grid-cols-2 gap-3 mt-3">
+      <div class="card p-3">
+        <div class="mb-2 font-semibold">Multiplicadores</div>
+        <table class="table w-full">
+          <tr><th>α</th><td class="mono">${round2(alpha)}</td></tr>
+          <tr><th>β</th><td class="mono">${round2(beta)}</td></tr>
+          <tr><th>γ</th><td class="mono">${round2(gamma)}</td></tr>
+        </table>
+      </div>
+      <div class="card p-3">
+        <div class="mb-2 font-semibold">Componentes autónomos</div>
+        <table class="table w-full">
+          <tr><th>A<sub>0</sub></th><td class="mono">${round2(A0)}</td></tr>
+        </table>
+      </div>
+    </div>`;
+  el.innerHTML = `<div class="card p-3">${title?`<div class="mb-2 font-semibold">${title}</div>`:''}<table class="table w-full">${rows}</table>${extras}</div>`;
+}
+
+function renderIntermediates(p) {
+  const { v, A0, rho, alpha, beta, gamma } = intermediates(p);
+  $('detallesIntermedios').innerHTML = `v = v<sub>x</sub> - v<sub>m</sub> = ${round2(v)}<br>A<sub>0</sub> = ${round2(A0)}<br>ρ = ${round2(rho)}<br>α = ${round2(alpha)}<br>β = ${round2(beta)}<br>γ = ${round2(gamma)}`;
+}
+
+function compareTables(base, shock) {
+  const keys = ['Y','r','R','E','C','I','G','NX','Sp','SSP','SSE','MP'];
+  const labels = { Y:'Y', r:'r', R:'R', E:'E', C:'C', I:'I', G:'G', NX:'NX', Sp:'Sp', SSP:'SSP', SSE:'SSE', MP:'M/P' };
+  const header = `<tr><th>Variable</th><th>Original</th><th>Shock</th><th>Var.% vs original</th></tr>`;
+  const rows = keys.map(k => {
+    const b = base[k]; const s = shock[k];
+    const dv = (b!==0 && b!=null) ? (100*(s-b)/b) : (s===0?0:Infinity);
+    return `<tr><td>${labels[k]}</td><td class="mono">${round2(b)}</td><td class="mono">${round2(s)}</td><td class="mono">${round2(dv)}</td></tr>`;
+  }).join('');
+  return `<table class="table w-full">${header}${rows}</table>`;
+}
+
+// Explicación detallada de mecanismos (HTML con pasos numerados)
+function mechanismText(changed, regime) {
+  const isFiscal = ['G0','TR0','t','T0','C0','I0','X0','IM0'].some(k => changed.includes(k)); // incluye demanda interna/externa
+  const isMonetary = changed.includes('MP');
+  const isRstarOnly = changed.includes('rstar') && !changed.includes('MP');
+  const isISslope  = changed.includes('t') || changed.includes('b');
+  const isLMslope  = changed.includes('k');
+
+  const ol = (arr) => '<ol class="list-decimal list-inside space-y-1">' + arr.map(x=>`<li>${x}</li>`).join('') + '</ol>';
+  const block = (resultado, pasos) => `<div class="mb-3"><div class="font-semibold">Resultado: ${resultado}</div>${ol(pasos)}</div>`;
+
+  // Priorizamos identificación del shock
+  // 1) Shock externo en r* (solo rstar cambia): efectos opuestos según régimen
+  if (isRstarOnly && !isFiscal && !isISslope && !isLMslope) {
+    if (regime === 'fixed') {
+      return block('EFICAZ (Y↑)', [
+        'Tras la caída de r*, inicialmente r > r* (al tipo original).',
+        'Se producen entradas de capital (presión apreciatoria).',
+        'Para mantener E fijo, el BC compra divisas ⇒ ↑(M/P) (LM→).',
+        'r cae hasta el nuevo r* y Y aumenta: expansión bajo tipo fijo.'
+      ]);
+    } else {
+      return block('CONTRACCIÓN (Y↓)', [
+        'Con r > r* se produce entrada de capitales.',
+        'Sin intervención, el tipo se aprecia (E↓).',
+        'La apreciación reduce NX (IS←).',
+        'El nuevo equilibrio presenta menor Y: caída de r* es contractiva con tipo flexible.'
+      ]);
+    }
+  }
+
+  // 2) Política monetaria doméstica (cambios en M/P)
+  if (isMonetary && !isFiscal && !isISslope && !isLMslope) {
+    if (regime === 'fixed') {
+      return block('Totalmente INEFICAZ (Y constante)', [
+        'La LM se desplaza a la derecha (Y↑, r↓).',
+        'Ahora r < r*, se produce salida de capitales.',
+        'Para mantener E fijo, el BC vende divisas: ↓(M/P), LM vuelve a su posición inicial.',
+        'Se anula el choque: r → r* y Y vuelve al original.'
+      ]);
+    } else {
+      return block('Totalmente EFICAZ (Y↑)', [
+        'La LM se desplaza a la derecha (Y↑, r↓).',
+        'Con r < r*, hay salida de capitales.',
+        'El mercado fuerza la depreciación (E↑).',
+        'La depreciación ↑NX (IS→).',
+        'Nuevo equilibrio con Y claramente mayor (monetaria eficaz).'
+      ]);
+    }
+  }
+
+  if (isFiscal || changed.includes('C0') || changed.includes('I0') || changed.includes('X0') || changed.includes('IM0')) {
+    if (regime === 'fixed') {
+      return block('Totalmente EFICAZ (Y↑)', [
+        'IS → (Y↑, r↑).',
+        'r > r* ⇒ entrada de capitales.',
+        'Para sostener E fijo, el BC compra divisas: ↑(M/P), LM →.',
+        'El ajuste continúa hasta r = r* con Y más alto.'
+      ]);
+    } else {
+      return block('Totalmente INEFICAZ (Y constante)', [
+        'IS → (Y↑, r↑).',
+        'r > r* ⇒ entrada de capitales.',
+        'Sin intervención, la moneda se aprecia (E↓).',
+        'La apreciación ↓NX y trae IS ← de vuelta.',
+        'Y regresa prácticamente al nivel original.'
+      ]);
+    }
+  }
+
+  if (isISslope && !isLMslope) {
+    if (regime === 'fixed') {
+      return block('Totalmente EFICAZ (Y↑)', [
+        '↓t o ↑b hace más sensible/desplaza IS.',
+        'r > r* ⇒ entrada de capitales.',
+        'BC ↑(M/P) para mantener r = r* y E fijo (LM→).',
+        'Nuevo equilibrio con Y más alto.'
+      ]);
+    } else {
+      return block('Totalmente INEFICAZ (Y constante)', [
+        '↓t o ↑b hace más sensible/desplaza IS.',
+        'r > r* ⇒ apreciación (E↓).',
+        '↓NX ⇒ IS ← hasta recuperar Y original.'
+      ]);
+    }
+  }
+
+  if (isLMslope) {
+    if (regime === 'fixed') {
+      return block('EFICAZ (Y↑)', [
+        '↑k hace LM más empinada.',
+        'r sube (r > r*) ⇒ entrada de capitales.',
+        'BC expande (M/P) para satisfacer la mayor demanda monetaria y mantener r = r*.',
+        'Y aumenta por el ajuste monetario compensatorio.'
+      ]);
+    } else {
+      return block('MENOS EFICAZ / Y↓ (típicamente)', [
+        '↑k hace LM más empinada; r tiende a subir (r > r*).',
+        'Apreciación (E↓) ⇒ ↓NX.',
+        'IS ← y el nuevo equilibrio se alcanza con Y más bajo.'
+      ]);
+    }
+  }
+
+  // Genérico
+  return block(regime === 'fixed' ? 'Depende del empuje de IS y el ajuste de M/P' : 'Depende del movimiento de E y su impacto en NX', [
+    regime === 'fixed' ? 'El BC ajusta (M/P) para mantener r=r* y E constante.' : 'El ajuste opera vía E (apreciación E↓ reduce NX; depreciación E↑ la aumenta).'
+  ]);
+}
+
+// ===== Equilibrio original (referencia única) ===== (referencia única) ===== (referencia única) =====
+function calculateOriginal(params) {
+  const p = params;
+  const err = validate(p);
+  if (err) throw new Error(err);
+  if (p.rstar === null) throw new Error('Para calcular el equilibrio original se requiere r* (movilidad perfecta).');
+  const { v, A0, alpha } = intermediates(p);
+  const r = p.rstar;
+  const Y = (p.MP + p.h * r) / p.k;
+  const R = (Y - alpha * A0 + alpha * p.b * r) / (alpha * v);
+  const E = (R * p.P) / p.Px;
+  const T = p.T0 + p.t * Y;
+  const C = p.C0 + p.c1 * (Y - T + p.TR0);
+  const I = p.I0 - p.b * r;
+  const G = p.G0 + p.n * Y;
+  const NX = p.X0 - p.IM0 + v * R - p.m * Y;
+  const Sp = -p.C0 + (1 - p.c1) * (Y - T + p.TR0);
+  const SSP = (p.T0 + p.t * Y) - (p.G0 + p.n * Y) - p.TR0;
+  const SSE = (p.X0 - p.IM0) - p.m * Y + v * R;
+  return { base:{ Y, r, R, E, C, I, G, NX, Sp, SSP, SSE, MP:p.MP } };
+}
+
+// ===== Defaults =====
+function setDefaults() {
+  const defaults = { C0:2000, T0:300, TR0:0, I0:300, G0:300, X0:500, IM0:100, c1:0.6, t:0, b:3000, m:0.2, n:0, k:0.2, h:1000, MP:500, rstar:0.25, vx:160, vm:80, Rfix:null, P:100, Px:100 };
+  for (const [k,v] of Object.entries(defaults)) if ($(k)) $(k).value = v;
+  $('inputError').textContent=''; $('shockError').textContent='';
+}
+
+// ===== Acciones UI =====
+function onCalcular() {
+  try {
+    const p = getParams(false);
+    const { base } = calculateOriginal(p);
+    $('inputError').textContent='';
+    renderEquilibrium('equilibrioBase', base, 'Equilibrio original (R endógeno)');
+    renderIntermediates(p);
+    window.__MF_BASE__ = { params:p, base };
+  } catch(e) {
+    $('inputError').textContent = e.message || String(e);
+  }
+}
+
+function onShock() {
+  try {
+    if (!window.__MF_BASE__) throw new Error('Primero calcula el equilibrio original.');
+    const p0 = window.__MF_BASE__.params;
+    const base = window.__MF_BASE__.base;
+    const pNew = getParams(true);
+
+    let flexRes = null;
+    if (pNew.rstar !== null) {
+      flexRes = equilibriumFlexible(pNew);
+    }
+
+    let fixRes = null;
+    if (pNew.rstar !== null) {
+      const E0 = base.E;
+      fixRes = equilibriumFixedGivenE(pNew, E0);
+    }
+
+    if (!flexRes && !fixRes) throw new Error('Para simular el shock, proporciona r* (obligatorio en ambos regímenes).');
+
+    let html='';
+    if (flexRes) html += `<h3 class=\"font-semibold mb-2\">Shock con tipo de cambio flexible (comparado con el equilibrio original)</h3>` + compareTables(base, flexRes);
+    if (fixRes)  html += `<h3 class=\"font-semibold mt-6 mb-2\">Shock con tipo de cambio fijo (E nominal = E₀, comparado con el equilibrio original)</h3>` + compareTables(base, fixRes);
+    $('resultadoShock').innerHTML = html;
+
+    const changed = [];
+    for (const k of Object.keys(p0)) { if (p0[k] !== pNew[k] && pNew[k] !== null) changed.push(k); }
+    const mechFixed = mechanismText(changed, 'fixed');
+    const mechFlex = mechanismText(changed, 'flex');
+    $('shocks-results').innerHTML = `<div><b>Mecanismo (fijo):</b> ${mechFixed}</div><div class=\"mt-2\"><b>Mecanismo (flexible):</b> ${mechFlex}</div>`;
+  } catch(e) {
+    $('shockError').textContent = e.message || String(e);
+  }
+}
+
+// ===== Tests =====
+function runTests() {
+  const out = [];
+  function assert(cond, msg) { out.push((cond? '✅':'❌') + ' ' + msg); }
+  setDefaults();
+  const p = getParams(false);
+  let ok = true; for (const k of ['C0','T0','TR0','I0','G0','X0','IM0','c1','t','b','m','n','k','h','MP','rstar','vx','vm','P','Px']) { ok = ok && (p[k] !== null); }
+  assert(ok, 'Defaults cargados (todos los parámetros definidos)');
+  const { base } = calculateOriginal(p);
+  assert(Number.isFinite(base.R) && Number.isFinite(base.E), 'Original: R y E calculados endógenamente');
+  const ints = intermediates(p);
+  assert([ints.A0, ints.alpha, ints.beta, ints.gamma].every(Number.isFinite), 'Intermedios: A0, alpha, beta, gamma definidos');
+  const E0 = base.E;
+  const pShock = { ...p, rstar: 0.23 };
+  const eqFixShock = equilibriumFixedGivenE(pShock, E0);
+  assert(round2(E0) === round2(eqFixShock.E), 'Fijo: E constante ante shock en r*');
+  const eqFlexShock = equilibriumFlexible(pShock);
+  assert(Number.isFinite(eqFlexShock.R), 'Flexible: R endógeno con r* cambiado');
+  $('testsOut').innerHTML = '<pre class="mono">' + out.join('\n') + '</pre>';
+}
+
+// ===== Eventos =====
+window.addEventListener('DOMContentLoaded', () => {
+  setDefaults();
+  $('btnDefaults').addEventListener('click', setDefaults);
+  $('btnCalcular').addEventListener('click', onCalcular);
+  $('btnShock').addEventListener('click', onShock);
+  $('btnRunTests').addEventListener('click', runTests);
+});
+</script>
+</body>
+</html>

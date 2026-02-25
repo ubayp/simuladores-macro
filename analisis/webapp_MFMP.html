@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modelo Mundell-Fleming: Movilidad Perfecta de Capitales</title>
+    <!-- Cargar Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            /* COLORES SOLICITADOS */
+            --color-is: #ff0000;   /* ROJO */
+            --color-lm: #0000ff;   /* AZUL */
+            --color-bp: #008000;   /* VERDE */
+            --color-dd: #800080;   /* MORADO (Demanda Divisa) */
+            --color-od: #ff1493;   /* ROSA (Oferta Divisa) */
+            
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text: #34495e;
+        }
+        body { margin: 0; padding: 20px; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; box-sizing: border-box; }
+        
+        /* HEADER */
+        header { text-align: center; margin-bottom: 5px; flex-shrink: 0; }
+        h1 { margin: 0; color: var(--primary); font-size: 1.6rem; }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr 350px; /* Panel narrativa más ancho */
+            gap: 15px;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        /* PANELES */
+        .panel { background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; border: 1px solid #e1e4e8; overflow: hidden; }
+        .panel-header { padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; font-weight: bold; color: var(--primary); font-size: 0.95rem; text-align: center; }
+
+        /* CONTROLES IZQUIERDA */
+        .scroll-area { overflow-y: auto; padding: 15px; flex-grow: 1; }
+        .control-section { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .control-section-title { font-size: 0.7rem; text-transform: uppercase; color: #95a5a6; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .control-group { margin-bottom: 8px; }
+        .control-label { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: #555; }
+        
+        /* SLIDERS SUAVES */
+        input[type=range] { width: 100%; cursor: pointer; height: 5px; background: #ddd; border-radius: 3px; -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--primary); border-radius: 50%; cursor: pointer; margin-top: -4px; transition: transform 0.1s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track { height: 5px; background: #ddd; border-radius: 3px; }
+
+        /* AREA CENTRAL */
+        .center-panel { display: flex; flex-direction: column; height: 100%; }
+        
+        .toolbar { 
+            padding: 10px; background: #fff; border-bottom: 1px solid #eee; 
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        .regime-selector { display: flex; gap: 10px; }
+        .btn-regime { padding: 6px 15px; border: 2px solid var(--primary); background: white; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 0.85rem; color: var(--primary); transition: all 0.2s; }
+        .btn-regime.active { background: var(--primary); color: white; }
+        .btn-reset { background: #7f8c8d; color: white; border: none; padding: 5px 20px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; font-weight: bold; }
+        .btn-reset:hover { background: #95a5a6; }
+
+        .graphs-container { display: grid; grid-template-rows: 1fr 1fr; gap: 5px; flex-grow: 1; padding: 5px; position: relative; }
+        .graph-wrapper { border: 1px solid #eee; border-radius: 4px; position: relative; }
+
+        /* LEYENDA */
+        .legend-box { font-size: 0.75rem; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 8px; background: #f8f9fa; border-top: 1px solid #eee; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .line { width: 18px; height: 3px; display: inline-block; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+        /* NARRATIVA MEJORADA */
+        .narrative-box { font-size: 0.9rem; line-height: 1.5; color: #444; }
+        .narrative-step { margin-bottom: 15px; padding: 12px; border-radius: 6px; border-left: 4px solid #ccc; background: #fafafa; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .step-title { font-weight: bold; display: block; margin-bottom: 5px; color: var(--primary); font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .step-1 { border-color: #f39c12; background: #fffdf5; }
+        .step-2 { border-color: #3498db; background: #f0f8ff; }
+        .step-3 { border-color: #27ae60; background: #f0fff4; }
+        
+        .highlight-up { color: #27ae60; font-weight: bold; }
+        .highlight-down { color: #c0392b; font-weight: bold; }
+        .concept { font-weight: bold; color: #2c3e50; }
+
+        @media (max-width: 1000px) {
+            .main-grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; overflow-y: auto; }
+            .graphs-container { height: 600px; }
+            body { height: auto; }
+        }
+    </style>
+</head>
+<body>
+<a href="../../index.html" style="position: absolute; top: 15px; left: 15px; background-color: #1e293b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-family: sans-serif; font-size: 0.85rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999; border: 1px solid #334155; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#0f172a'" onmouseout="this.style.backgroundColor='#1e293b'">
+  &larr; Volver al Menú
+</a>
+<header>
+    <h1>Modelo Mundell-Fleming</h1>
+    <p style="margin:2px 0; color:#7f8c8d; font-size:0.85rem;">Movilidad Perfecta de Capitales (r = r*)</p>
+</header>
+
+<div class="main-grid">
+    
+    <!-- CONTROLES -->
+    <div class="panel">
+        <div class="panel-header">Variables Exógenas</div>
+        <div class="scroll-area" id="controls-container"></div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="panel center-panel">
+        <!-- BARRA DE HERRAMIENTAS -->
+        <div class="toolbar">
+            <div class="regime-selector">
+                <button class="btn-regime active" id="btn-flexible" onclick="setRegime('flexible')">TC Flexible</button>
+                <button class="btn-regime" id="btn-fixed" onclick="setRegime('fixed')">TC Fijo</button>
+            </div>
+            <button class="btn-reset" onclick="resetSim()">↺ Restaurar Equilibrio Inicial</button>
+        </div>
+
+        <div class="graphs-container">
+            <div class="graph-wrapper" id="graph-islm"></div>
+            <div class="graph-wrapper" id="graph-forex"></div>
+        </div>
+
+        <!-- LEYENDA -->
+        <div class="legend-box">
+            <div class="legend-item"><span class="line" style="background:var(--color-is);"></span> IS</div>
+            <div class="legend-item"><span class="line" style="background:var(--color-lm);"></span> LM</div>
+            <div class="legend-item"><span class="line" style="background:var(--color-bp); border-top: 2px dashed var(--color-bp); height:0;"></span> BP ($r=r^*$)</div>
+            <div style="width:1px; background:#ccc; height:12px; margin:0 5px;"></div>
+            <div class="legend-item"><span class="line" style="background:var(--color-dd);"></span> D. Divisas</div>
+            <div class="legend-item"><span class="line" style="background:var(--color-od);"></span> O. Divisas</div>
+            <div style="width:1px; background:#ccc; height:12px; margin:0 5px;"></div>
+            <div class="legend-item"><span class="dot" style="background:#95a5a6;"></span> 0: Inicio</div>
+            <div class="legend-item"><span class="dot" style="background:#e67e22;"></span> 1: Shock</div>
+            <div class="legend-item"><span class="dot" style="background:#2c3e50;"></span> 2: Final</div>
+        </div>
+    </div>
+
+    <!-- NARRATIVA -->
+    <div class="panel">
+        <div class="panel-header">Mecanismo de Transmisión Detallado</div>
+        <div class="scroll-area" id="narrative-container">
+            <p style="color:#7f8c8d; text-align:center; padding-top:40px;">
+                El sistema se encuentra en equilibrio conjunto ($r = r^*$).<br><br>
+                Modifique un parámetro para ver el análisis detallado paso a paso.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// --- CONFIGURACIÓN ---
+let regime = 'flexible';
+const Y_MAX = 1500;
+
+const params = {
+    // Shocks
+    G:  { val: 250, min: 100, max: 400, step: 1, label: "Gasto Público (G)", type: "IS", cat: "Política Fiscal" },
+    T:  { val: 200, min: 50,  max: 350, step: 1, label: "Impuestos (T)",    type: "IS", cat: "Política Fiscal" },
+    M:  { val: 300, min: 100, max: 600, step: 1, label: "Oferta Monetaria (M/P)", type: "LM", cat: "Política Monetaria" },
+    Yw: { val: 500, min: 200, max: 800, step: 5, label: "Renta Mundial (Y*)", type: "IS", cat: "Sector Exterior" },
+    rw: { val: 4.0, min: 1.0, max: 7.0, step: 0.1,label: "Interés Mundial (r*)", type: "BP", cat: "Sector Exterior" },
+    IM0:{ val: 50,  min: 10,  max: 150, step: 1, label: "Import. Autónomas", type: "IS", cat: "Sector Exterior" },
+    
+    // Pendientes
+    c:  { val: 0.7, min: 0.5, max: 0.9, step: 0.01, label: "PMC (c)", type: "SLOPE", cat: "Estructurales" },
+    t:  { val: 0.2, min: 0.1, max: 0.4, step: 0.01, label: "Tasa Impositiva (t)", type: "SLOPE", cat: "Estructurales" },
+    b:  { val: 30,  min: 10,  max: 60,  step: 1,    label: "Sensib. Inv. a r (b)", type: "SLOPE", cat: "Estructurales" },
+    k:  { val: 0.5, min: 0.2, max: 0.8, step: 0.01, label: "Sensib. L a Y (k)", type: "SLOPE", cat: "Estructurales" },
+    h:  { val: 40,  min: 20,  max: 80,  step: 1,    label: "Sensib. L a r (h)", type: "SLOPE", cat: "Estructurales" }
+};
+
+// Constantes estructurales
+const HIDDEN = { C0: 100, I0: 150, X0: 100, v: 50, m: 0.15, phi: 0.1 };
+
+let current = {}; 
+let base = {};    
+let lastChanged = null;
+
+// --- INICIALIZACIÓN ---
+function init() {
+    for(let k in params) current[k] = params[k].val;
+    
+    // Calibración Perfecta
+    const A0_partial = HIDDEN.C0 + HIDDEN.I0 + current.G + HIDDEN.X0 - current.IM0 + HIDDEN.v*1 + HIDDEN.phi*current.Yw - current.c*current.T; 
+    const mult = 1 / (1 - current.c*(1-current.t) + HIDDEN.m);
+    const Y0 = mult * (A0_partial - current.b * current.rw);
+    const M_req = current.k * Y0 - current.h * current.rw;
+    
+    current.M = M_req; 
+    params.M.val = M_req;
+
+    base = {...current};
+    renderControls();
+    update();
+}
+
+function renderControls() {
+    const container = document.getElementById('controls-container');
+    container.innerHTML = '';
+    const cats = {};
+    for(let k in params) { if(!cats[params[k].cat]) cats[params[k].cat] = []; cats[params[k].cat].push(k); }
+
+    for(let cat in cats) {
+        let html = `<div class="control-section"><div class="control-section-title">${cat}</div>`;
+        cats[cat].forEach(k => {
+            const p = params[k];
+            const displayVal = (p.val < 10 && p.val % 1 !== 0) ? current[k].toFixed(2) : Math.round(current[k]);
+            html += `
+                <div class="control-group">
+                    <div class="control-label"><span>${p.label}</span> <span id="disp-${k}">${displayVal}</span></div>
+                    <input type="range" id="sl-${k}" min="${p.min}" max="${p.max}" step="${p.step}" value="${current[k]}" 
+                           oninput="handleInput('${k}', this.value)">
+                </div>`;
+        });
+        html += `</div>`;
+        container.innerHTML += html;
+    }
+}
+
+function handleInput(key, val) {
+    current[key] = parseFloat(val);
+    lastChanged = key;
+    document.getElementById(`disp-${key}`).innerText = (current[key] < 10 && current[key] % 1 !== 0) ? current[key].toFixed(2) : Math.round(current[key]);
+    update();
+}
+
+function setRegime(r) {
+    regime = r;
+    document.getElementById('btn-flexible').className = `btn-regime ${r==='flexible'?'active':''}`;
+    document.getElementById('btn-fixed').className = `btn-regime ${r==='fixed'?'active':''}`;
+    update();
+}
+
+function resetSim() {
+    for(let k in params) current[k] = base[k]; 
+    lastChanged = null;
+    
+    for(let k in params) {
+        let el = document.getElementById(`sl-${k}`);
+        if(el) el.value = current[k];
+        let disp = document.getElementById(`disp-${k}`);
+        if(disp) disp.innerText = (current[k] < 10 && current[k] % 1 !== 0) ? current[k].toFixed(2) : Math.round(current[k]);
+    }
+    document.getElementById('narrative-container').innerHTML = '<p style="color:#7f8c8d; text-align:center; padding-top:40px;">Valores restaurados. Sistema en equilibrio.</p>';
+    update();
+}
+
+// --- CÁLCULO ---
+function solve(p, e_val, M_val) {
+    const alpha = 1 / (1 - p.c*(1-p.t) + HIDDEN.m);
+    const A_is = HIDDEN.C0 - p.c*p.T + HIDDEN.I0 + p.G + HIDDEN.X0 + HIDDEN.phi*p.Yw - p.IM0;
+    const term_M = (p.b * M_val) / p.h;
+    const Y_eq = (alpha * (A_is + HIDDEN.v * e_val + term_M)) / (1 + (alpha * p.b * p.k) / p.h);
+    const r_eq = (p.k * Y_eq - M_val) / p.h;
+    return { Y: Y_eq, r: r_eq };
+}
+
+function update() {
+    let isShock = false;
+    for(let k in current) if(Math.abs(current[k] - base[k]) > 0.001) isShock = true;
+
+    // 0: Base
+    const eq0 = solve(base, 1.0, base.M);
+    
+    // 1: Shock (e=1, M=current)
+    const eq1 = solve(current, 1.0, current.M);
+    
+    // 2: Ajuste
+    let eq2, e_final = 1.0, M_final = current.M;
+    
+    if(regime === 'flexible') {
+        const Y_target = (current.h * current.rw + current.M) / current.k;
+        const alpha = 1 / (1 - current.c*(1-current.t) + HIDDEN.m);
+        const A_is = HIDDEN.C0 - current.c*current.T + HIDDEN.I0 + current.G + HIDDEN.X0 + HIDDEN.phi*current.Yw - current.IM0;
+        e_final = ( (Y_target/alpha) + current.b*current.rw - A_is ) / HIDDEN.v;
+        eq2 = { Y: Y_target, r: current.rw };
+    } else { // Fixed
+        const alpha = 1 / (1 - current.c*(1-current.t) + HIDDEN.m);
+        const A_is = HIDDEN.C0 - current.c*current.T + HIDDEN.I0 + current.G + HIDDEN.X0 + HIDDEN.phi*current.Yw - current.IM0;
+        const Y_target = alpha * (A_is + HIDDEN.v*1.0 - current.b*current.rw);
+        M_final = current.k * Y_target - current.h * current.rw;
+        eq2 = { Y: Y_target, r: current.rw };
+    }
+
+    if(!isShock) {
+        drawISLM(eq0, null, null, 1.0, current.M);
+        drawForex(eq0, null, regime);
+    } else {
+        drawISLM(eq0, eq1, eq2, e_final, M_final);
+        drawForex(eq0, eq1, regime);
+        if(lastChanged) writeNarrative(eq0, eq1, eq2, regime);
+    }
+}
+
+// --- GRÁFICOS ---
+function drawISLM(e0, e1, e2, eFin, MFin) {
+    const xVec = [0, Y_MAX];
+    const getIS = (p, eVal) => {
+        const alpha = 1 / (1 - p.c*(1-p.t) + HIDDEN.m);
+        const A_is = HIDDEN.C0 - p.c*p.T + HIDDEN.I0 + p.G + HIDDEN.X0 + HIDDEN.phi*p.Yw - p.IM0;
+        return xVec.map(y => (A_is + HIDDEN.v*eVal - y/alpha) / p.b);
+    }
+    const getLM = (p, mVal) => xVec.map(y => (p.k*y - mVal)/p.h);
+
+    const traces = [];
+    const annotations = [];
+
+    // BASE
+    traces.push({ x: xVec, y: getIS(base, 1.0), mode:'lines', line:{color:'var(--color-is)', width:2}, name:'IS₀', hoverinfo:'none'});
+    traces.push({ x: xVec, y: getLM(base, base.M), mode:'lines', line:{color:'var(--color-lm)', width:2}, name:'LM₀', hoverinfo:'none'});
+    traces.push({ x: xVec, y: [current.rw, current.rw], mode:'lines', line:{color:'var(--color-bp)', width:2, dash:'dash'}, name:'BP', hoverinfo:'none'});
+    traces.push({ x:[e0.Y], y:[e0.r], mode:'markers+text', text:'0', textposition:'top right', marker:{color:'#95a5a6', size:8}, showlegend:false });
+
+    if(e1 && e2) {
+        // SHOCK (1)
+        const isISShock = Math.abs(getIS(base, 1.0)[0] - getIS(current, 1.0)[0]) > 0.1;
+        const isLMShock = Math.abs(getLM(base, base.M)[0] - getLM(current, current.M)[0]) > 0.1;
+
+        if(isISShock) {
+            traces.push({ x: xVec, y: getIS(current, 1.0), mode:'lines', line:{color:'var(--color-is)', width:2, dash:'dot'}, name:'IS₁', hoverinfo:'none'});
+            annotations.push(createArrow(e0, e1, 'var(--color-is)'));
+        }
+        if(isLMShock) {
+            traces.push({ x: xVec, y: getLM(current, current.M), mode:'lines', line:{color:'var(--color-lm)', width:2, dash:'dot'}, name:'LM₁', hoverinfo:'none'});
+            annotations.push(createArrow(e0, e1, 'var(--color-lm)'));
+        }
+        traces.push({ x:[e1.Y], y:[e1.r], mode:'markers+text', text:'1', textposition:'top right', marker:{color:'#e67e22', size:10}, showlegend:false });
+
+        // FINAL (2)
+        const isISAdj = Math.abs(eFin - 1.0) > 0.01;
+        const isLMAdj = Math.abs(MFin - current.M) > 1;
+
+        if(isISAdj) {
+            traces.push({ x: xVec, y: getIS(current, eFin), mode:'lines', line:{color:'var(--color-is)', width:3, dash:'dot'}, name:'IS₂', hoverinfo:'none'});
+            annotations.push(createArrow(e1, e2, 'var(--color-is)'));
+        }
+        if(isLMAdj) {
+            traces.push({ x: xVec, y: getLM(current, MFin), mode:'lines', line:{color:'var(--color-lm)', width:3, dash:'dot'}, name:'LM₂', hoverinfo:'none'});
+            annotations.push(createArrow(e1, e2, 'var(--color-lm)'));
+        }
+        
+        // Etiqueta 2 o 0=2
+        const isOverlap = Math.abs(e2.Y - e0.Y) < 20 && Math.abs(e2.r - e0.r) < 0.1;
+        const txt2 = isOverlap ? "0=2" : "2";
+        if(isOverlap) {
+             // Si se solapan, actualizamos la traza 0 para que diga 0=2
+             traces[3].text = "0=2";
+        } else {
+             traces.push({ x:[e2.Y], y:[e2.r], mode:'markers+text', text:txt2, textposition:'bottom right', marker:{color:'#2c3e50', size:12}, showlegend:false });
+        }
+    }
+
+    Plotly.newPlot('graph-islm', traces, {
+        title: false,
+        margin: {l:40, r:10, t:20, b:30},
+        xaxis: {title: 'Renta (Y)', range:[0, Y_MAX], showgrid:true},
+        yaxis: {title: 'Tipo de Interés (r)', range:[0, 10], side:'left'},
+        showlegend: false,
+        annotations: annotations
+    }, {responsive:true, displayModeBar:false});
+}
+
+function drawForex(e0, e1, reg) {
+    const xVec = [0, 10];
+    const D0 = xVec.map(q => 8 - 0.6*q); 
+    const S0 = xVec.map(q => 2 + 0.6*q); 
+
+    const traces = [
+        { x: xVec, y: D0, line:{color:'var(--color-dd)'}, name:'D₀' },
+        { x: xVec, y: S0, line:{color:'var(--color-od)'}, name:'S₀' },
+        { x: [5], y: [5], mode:'markers+text', text:'0', marker:{size:8, color:'#95a5a6'}, textposition:'top right', showlegend:false}
+    ];
+
+    if(e1) {
+        const r_diff = (e1.r) - current.rw;
+        let S1 = S0; 
+        
+        if(Math.abs(r_diff) > 0.05) {
+            if(r_diff > 0) S1 = xVec.map(q => 4 + 0.6*q); 
+            else S1 = xVec.map(q => 0 + 0.6*q);
+            
+            // Reacción Rayada - Color Oferta (Rosa)
+            traces.push({ x: xVec, y: S1, line:{color:'var(--color-od)', dash:'dot'}, name:'S₁' });
+            
+            const q1 = (8 - (r_diff>0?4:0))/1.2;
+            const e1_val = 8 - 0.6*q1;
+            traces.push({ x: [q1], y: [e1_val], mode:'markers+text', text:'1', marker:{size:10, color:'#e67e22'}, textposition:'top right', showlegend:false});
+
+            if(reg === 'fixed') {
+                let D2 = D0, S2 = S1, pt2;
+                if(r_diff > 0) { 
+                    D2 = xVec.map(q => 10 - 0.6*q); 
+                    // Reacción Rayada - Color Demanda (Morado)
+                    traces.push({ x: xVec, y: D2, line:{color:'var(--color-dd)', width:3, dash:'dot'}, name:'D₂' });
+                    pt2 = {x: 7.5, y: 5};
+                } else {
+                    pt2 = {x: 5, y: 5}; 
+                }
+                traces.push({ x: [pt2.x], y: [pt2.y], mode:'markers+text', text:'2', marker:{size:12, color:'#2c3e50'}, textposition:'top right', showlegend:false});
+            } else {
+                traces.push({ x: [q1], y: [e1_val], mode:'markers+text', text:'2', marker:{size:12, color:'#2c3e50'}, textposition:'bottom left', showlegend:false});
+            }
+        }
+    }
+
+    Plotly.newPlot('graph-forex', traces, {
+        title: false,
+        margin: {l:40, r:10, t:20, b:30},
+        xaxis: {title: 'Cantidad Divisas', showgrid:false, showticklabels:false},
+        yaxis: {title: 'Tipo de Cambio (E)', range:[0,10], showgrid:false, showticklabels:false},
+        showlegend: false
+    }, {responsive:true, displayModeBar:false});
+}
+
+function createArrow(p1, p2, color) {
+    if(Math.abs(p1.Y - p2.Y) < 10 && Math.abs(p1.r - p2.r) < 0.1) return {};
+    return {
+        x: p2.Y, y: p2.r, ax: p1.Y, ay: p1.r,
+        xref: 'x', yref: 'y', axref: 'x', ayref: 'y',
+        showarrow: true, arrowhead: 2, arrowwidth: 2, arrowcolor: color
+    };
+}
+
+function writeNarrative(e0, e1, e2, reg) {
+    const p = params[lastChanged];
+    const diff = current[lastChanged] - base[lastChanged];
+    const dir = diff > 0 ? "Aumento" : "Disminución";
+    const r_diff = e1.r - current.rw;
+    const isShockExp = (p.cat === "Política Fiscal" || p.cat === "IS" || p.cat === "Sector Exterior") ? diff > 0 : diff > 0; // Simplificado
+    
+    // --- TEXTO 1: SHOCK INICIAL ---
+    let txt1 = `<div class="step-title">1. Shock Inicial (${p.cat})</div>`;
+    txt1 += `Se produce un <b>${dir} de ${p.label}</b>. `;
+    
+    if(p.type === 'IS') {
+        txt1 += `Esto afecta directamente a la Demanda Agregada. <br>La curva <b>IS se desplaza hacia la ${diff>0 ? 'derecha' : 'izquierda'}</b>. `;
+        txt1 += `El nuevo nivel de renta altera la demanda de dinero por motivo transacción ($L ${diff>0?'↑':'↓'}$), presionando el tipo de interés ${diff>0?'al alza':'a la baja'}.`;
+    } else if (p.type === 'LM') {
+        txt1 += `Esto altera la liquidez del sistema. <br>La curva <b>LM se desplaza hacia la ${diff>0 ? 'derecha' : 'izquierda'}</b>. `;
+        txt1 += `El ${diff>0?'exceso':'defecto'} de oferta monetaria provoca una ${diff>0?'caída':'subida'} inmediata del tipo de interés (<b>r</b>).`;
+    } else if (lastChanged === 'rw') {
+        txt1 += `Esto cambia el coste de oportunidad del capital externo. La línea <b>BP se desplaza verticalmente</b>.`;
+    } else {
+        txt1 += `Esto modifica la estructura de la economía, cambiando la <b>pendiente</b> de las curvas.`;
+    }
+
+    // --- TEXTO 2: DESEQUILIBRIO EXTERIOR ---
+    let txt2 = `<div class="step-title">2. Desequilibrio Balanza de Pagos</div>`;
+    txt2 += `El equilibrio interno temporal (Punto 1) se sitúa en <b>r = ${e1.r.toFixed(2)}\%</b>, mientras que el mundial es <b>r* = ${current.rw.toFixed(2)}\%</b>.<br>`;
+    
+    if(Math.abs(r_diff) > 0.05) {
+        if(r_diff > 0) {
+            txt2 += `<span class="concept">r > r*: Entrada masiva de capitales.</span> <br>`;
+            txt2 += `Los inversores internacionales compran activos nacionales. Para ello, venden divisas y compran moneda local. `;
+            txt2 += `Esto aumenta la oferta de divisas (o demanda de moneda local), generando una fuerte <b>presión a la APRECIACIÓN</b> del tipo de cambio.`;
+        } else {
+            txt2 += `<span class="concept">r < r*: Salida masiva de capitales.</span> <br>`;
+            txt2 += `Los inversores venden activos nacionales para buscar mayor rentabilidad fuera. Venden moneda local y demandan divisas. `;
+            txt2 += `Esto genera una fuerte <b>presión a la DEPRECIACIÓN</b> del tipo de cambio.`;
+        }
+    } else {
+        txt2 += `El diferencial de tipos es despreciable. No hay flujos de capital significativos.`;
+    }
+
+    // --- TEXTO 3: AJUSTE SEGÚN RÉGIMEN ---
+    let txt3 = `<div class="step-title">3. Respuesta y Equilibrio Final (${reg.toUpperCase()})</div>`;
+    
+    if(reg === 'flexible') {
+        // FLEXIBLE
+        if(Math.abs(r_diff) > 0.05) {
+            if(r_diff > 0) { // Apreciación
+                txt3 += `El Banco Central NO interviene. El tipo de cambio se <b>Aprecia</b> (<b>E</b> &#8595). <br>`;
+                txt3 += `La apreciación encarece las exportaciones y abarata las importaciones. Las Exportaciones Netas caen (<b>XN</b> &#8595). <br>`;
+                txt3 += `Gráficamente, la <b>IS retrocede hacia la izquierda</b> hasta que $r$ vuelve a igualarse a <b>r*</b>. <br>`;
+                if(p.type === 'IS') txt3 += `<span class="highlight-down">Conclusión: La Política Fiscal es TOTALMENTE INEFICAZ (Crowding Out total vía sector exterior).</span>`;
+                else txt3 += `<span class="highlight-up">Conclusión: La Política Monetaria (contractiva) se ve reforzada.</span>`;
+            } else { // Depreciación
+                txt3 += `El Banco Central NO interviene. El tipo de cambio se <b>Deprecia</b> (<b>E</b> &#8593). <br>`;
+                txt3 += `La depreciación hace competitivas las exportaciones. Las Exportaciones Netas aumentan (<b>XN</b>) &#8593 <br>`;
+                txt3 += `Gráficamente, la <b>IS se desplaza a la derecha</b>, impulsando aún más la renta hasta que <b>r=r*</b>. <br>`;
+                if(p.type === 'LM') txt3 += `<span class="highlight-up">Conclusión: La Política Monetaria es SUPER EFICAZ (la depreciación refuerza la expansión).</span>`;
+                else txt3 += `<span class="highlight-up">Conclusión: La expansión fiscal se ve reforzada.</span>`;
+            }
+        } else txt3 += "El sistema se mantiene estable.";
+    } else {
+        // FIJO
+        if(Math.abs(r_diff) > 0.05) {
+            if(r_diff > 0) { // Presión Apreciación -> BC Compra Divisa
+                txt3 += `El Banco Central debe evitar la apreciación. Interviene <b>comprando el exceso de divisas</b> y vendiendo moneda nacional. <br>`;
+                txt3 += `Esta operación aumenta las reservas de divisas y, simultáneamente, aumenta la Oferta Monetaria (<b>M</b> &#8593). <br>`;
+                txt3 += `Gráficamente, la <b>LM se desplaza a la derecha</b> acompañando la expansión hasta que <b>r=r^*</b>. <br>`;
+                if(p.type === 'IS') txt3 += `<span class="highlight-up">Conclusión: La Política Fiscal es SUPER EFICAZ (el BC acomoda la expansión monetariamente).</span>`;
+                else txt3 += `<span class="highlight-down">Conclusión: La Política Monetaria es INEFICAZ (el BC pierde el control de M para mantener E).</span>`;
+            } else { // Presión Depreciación -> BC Vende Divisa
+                txt3 += `El Banco Central debe evitar la depreciación. Interviene <b>vendiendo sus reservas de divisas</b> y retirando moneda nacional. <br>`;
+                txt3 += `Esta operación reduce la Oferta Monetaria (<b>M</b> &#8595). <br>`;
+                txt3 += `Gráficamente, la <b>LM se desplaza a la izquierda</b>, elevando el tipo de interés hasta volver a <b>r*</b>. <br>`;
+                if(p.type === 'IS') txt3 += `<span class="highlight-down">Conclusión: La Política Fiscal contractiva es muy potente.</span>`;
+                else if(p.type === 'LM') txt3 += `<span class="highlight-down">Conclusión: La Política Monetaria es TOTALMENTE INEFICAZ (el intento de expansión se anula al perder reservas).</span>`;
+            }
+        } else txt3 += "El sistema se mantiene estable.";
+    }
+
+    const html = `
+        <div class="narrative-step step-1">${txt1}</div>
+        <div class="narrative-step step-1">${txt2}</div>
+        <div class="narrative-step step-2">${txt3}</div>
+    `;
+    document.getElementById('narrative-container').innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

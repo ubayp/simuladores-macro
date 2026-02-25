@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Modelo IS-LM Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados */
+        .positive-change { color: #10b981; } /* Verde para aumento */
+        .negative-change { color: #ef4444; } /* Rojo para disminución */
+        .form-input {
+            width: 100%;
+            padding: 4px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem; /* text-sm */
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .form-input:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+        label { display: block; font-size: 0.875rem; color: #4b5563; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8 font-sans">
+
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-4xl font-extrabold text-blue-800 mb-6 border-b pb-2">
+            Calculadora y Simulador del Modelo IS-LM
+        </h1>
+        <p class="mb-6 text-gray-600">Aplicación para calcular el equilibrio del modelo IS-LM.</p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <div id="original-inputs-container" class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg h-fit">
+                <h2 class="text-2xl font-semibold text-blue-700 mb-4">I. Parámetros (Escenario Base)</h2>
+                <form id="is-lm-form" class="space-y-3">
+                    
+                    <p class="font-bold text-gray-600 border-b pb-1 mt-4">Componentes Autónomos</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label>C<sub>0</sub>: <input type="number" step="0.01" id="C0" class="form-input" value="1900"></label>
+                        <label>T<sub>0</sub>: <input type="number" step="0.01" id="T0" class="form-input" value="0"></label>
+                        <label>TR<sub>0</sub>: <input type="number" step="0.01" id="TR0" class="form-input" value="2000"></label>
+                        <label>I<sub>0</sub>: <input type="number" step="0.01" id="I0" class="form-input" value="4600"></label>
+                        <label>G<sub>0</sub>: <input type="number" step="0.01" id="G0" class="form-input" value="3000"></label>
+                        <label>X<sub>0</sub>: <input type="number" step="0.01" id="X0" class="form-input" value="5000"></label>
+                        <label>IM<sub>0</sub>: <input type="number" step="0.01" id="IM0" class="form-input" value="500"></label>
+                    </div>
+
+                    <p class="font-bold text-gray-600 border-b pb-1 mt-4">Propensiones/Sensibilidades</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label>c1 (0-1): <input type="number" step="0.01" id="c1" class="form-input" value="0.8" min="0" max="1"></label>
+                        <label>t (0-1): <input type="number" step="0.01" id="t" class="form-input" value="0.2" min="0" max="1"></label>
+                        <label>b (Ir): <input type="number" step="0.01" id="b" class="form-input" value="30"></label>
+                        <label>m (IMy): <input type="number" step="0.01" id="m" class="form-input" value="0.24"></label>
+                        <label>n (Gy): <input type="number" step="0.01" id="n" class="form-input" value="0"></label>
+                        <label>z (Iy): <input type="number" step= "0.01" id="z" class="form-input" value="0"></label>
+                    </div>
+
+                    <p class="font-bold text-gray-600 border-b pb-1 mt-4">Mercado de Dinero (LM)</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label>k (Ly): <input type="number" step="0.01" id="k" class="form-input" value="1"></label>
+                        <label>h (Lr): <input type="number" step="0.01" id="h" class="form-input" value="100"></label>
+                        <label>M/P: <input type="number" step="0.01" id="Mp" class="form-input" value="24500"></label>
+                    </div>
+
+                    <div id="validation-errors-base" class="text-red-500 font-semibold mt-3 hidden text-xs"></div>
+                    
+                    <button type="button" id="calculate-base-btn" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition duration-150 mt-4">
+                        Calcular Equilibrio Base (III)
+                    </button>
+                </form>
+            </div>
+
+            <div class="lg:col-span-2 space-y-8">
+                
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-semibold text-blue-700 mb-4">II. Resultados de Equilibrio Base</h2>
+
+                    <div id="initial-results-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border p-4 rounded-lg bg-blue-50">
+                            <p class="text-sm text-gray-500">Renta de Equilibrio (Y_e)</p>
+                            <p id="Y-initial" class="text-3xl font-bold text-blue-900">...</p>
+                        </div>
+                        <div class="border p-4 rounded-lg bg-blue-50">
+                            <p class="text-sm text-gray-500">Tipo de Interés (r_e)</p>
+                            <p id="r-initial" class="text-3xl font-bold text-blue-900">...</p>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <p class="font-bold text-gray-600 border-b pb-1 mt-4">III. Componentes Intermedios</p>
+                            <div class="grid grid-cols-3 gap-2 text-sm mt-2">
+                                <div>A<sub>0</sub> (Gasto Autónomo): <span id="A0-initial" class="font-semibold"></span></div>
+                                <div>&#961 (Prop. Marginal Ag.): <span id="rho-initial" class="font-semibold"></span></div>
+                                <div>&#945 (Multiplicador Simple): <span id="alpha-initial" class="font-semibold"></span></div>
+                                <div>&#947 (Multiplicador Fiscal): <span id="gamma-initial" class="font-semibold"></span></div>
+                                <div>&#946 (Multiplicador Monetario): <span id="beta-initial" class="font-semibold"></span></div>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <p class="font-bold text-gray-600 border-b pb-1 mt-4">IV. Variables de Gasto y Saldos Sectoriales</p>
+                            <div class="grid grid-cols-3 gap-2 text-sm mt-2">
+                                <div>Consumo (C): <span id="C-initial" class="font-semibold"></span></div>
+                                <div>Inversión (I): <span id="I-initial" class="font-semibold"></span></div>
+                                <div>Gasto P. (G): <span id="G-initial" class="font-semibold"></span></div>
+                                <div>Ahorro P. (Sp): <span id="Sp-initial" class="font-semibold"></span></div>
+                                <div>Saldo P. (SSP): <span id="SSP-initial" class="font-semibold"></span></div>
+                                <div>Saldo E. (SSE/NX): <span id="SSE-initial" class="font-semibold"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-semibold text-red-700 mb-4">V. Simulación de Shocks y Análisis (VI)</h2>
+                    <p class="text-gray-500 mb-4">Modifique uno o más parámetros introduciendo <b>el valor final de los mismos</b>, no la variación para calcular el <b>shock</b>.</p>
+
+                    <form id="shock-form" class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            
+                            <div class="p-3 bg-red-50 rounded-lg">
+                                <p class="font-bold text-red-700 mb-2">Política Fiscal</p>
+                                <label class="block text-sm">G<sub>0</sub>: <input type="number" step="0.01" id="shock-G0" class="form-input"></label>
+                                <label class="block text-sm">TR<sub>0</sub>: <input type="number" step="0.01" id="shock-TR0" class="form-input"></label>
+                                <label class="block text-sm">t: <input type="number" step="0.01" id="shock-t" class="form-input" min="0" max="1"></label>
+                                <label class="block text-sm">T<sub>0</sub>: <input type="number" step="0.01" id="shock-T0" class="form-input"></label>
+                            </div>
+
+                            <div class="p-3 bg-red-50 rounded-lg">
+                                <p class="font-bold text-red-700 mb-2">Política Monetaria</p>
+                                <label class="block text-sm">M/P: <input type="number" step="0.01" id="shock-Mp" class="form-input"></label>
+                            </div>
+
+                            <div class="p-3 bg-red-50 rounded-lg col-span-1 sm:col-span-2">
+                                <p class="font-bold text-red-700 mb-2">Parámetros Estructurales</p>
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <label>C<sub>0</sub>: <input type="number" step="0.01" id="shock-C0" class="form-input"></label>
+                                    <label>I<sub>0</sub>: <input type="number" step="0.01" id="shock-I0" class="form-input"></label>
+                                    <label>b (Ir): <input type="number" step="0.01" id="shock-b" class="form-input"></label>
+                                    <label>m (IMy): <input type="number" step="0.01" id="shock-m" class="form-input"></label>
+                                    <label>k (Ly): <input type="number" step="0.01" id="shock-k" class="form-input"></label>
+                                    <label>h (Lr): <input type="number" step="0.01" id="shock-h" class="form-input"></label>
+                                    <label>X<sub>0</sub>: <input type="number" step="0.01" id="shock-X0" class="form-input"></label>
+                                    <label>IM<sub>0</sub>: <input type="number" step="0.01" id="shock-IM0" class="form-input"></label>
+                                    <label>z (I<sub>y</sub>): <input type="number" step="0.01" id="shock-z" class="form-input"></label>
+                                    <label>n (G<sub>y</sub>): <input type="number" step="0.01" id="shock-z" class="form-input"></label>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="validation-errors-shock" class="text-red-500 font-semibold mt-3 hidden text-xs"></div>
+
+                        <button type="button" id="simulate-shock-btn" class="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-150">
+                            Simular Shock
+                        </button>
+                    </form>
+
+                    <div id="shocks-results" class="mt-6 hidden">
+                        <h3 class="text-xl font-semibold text-red-800 mb-3 border-b pb-1">Tabla Comparativa y Variación (%)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white border border-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                                        <th class="p-3 border-b">Variable</th>
+                                        <th class="p-3 border-b text-center">Base (V)</th>
+                                        <th class="p-3 border-b text-center">Shock (V')</th>
+                                        <th class="p-3 border-b text-center">Var. (%)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shock-table-body" class="text-gray-700">
+                                    </tbody>
+                            </table>
+                        </div>
+
+                        <h3 class="text-xl font-semibold text-red-800 mt-6 mb-3 border-b pb-1">VI. Mecanismo de Transmisión de Shocks</h3>
+                        <div id="transmission-mechanism" class="p-4 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded-md">
+                            <p class="font-medium" id="transmission-title">...</p>
+                            <p id="transmission-text" class="mt-2 text-sm">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-semibold text-green-700 mb-4">VII. Reestablecimiento de Saldos (NX=0 o SSP=0)</h2>
+                    <p class="text-gray-500 mb-4">Ajustar una variable para conseguir Saldo Sector Público (SSP=0) o Saldo Exterior (NX=0).</p>
+
+                    <form id="balanced-form" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium">Objetivo de Saldo:</label>
+                                <select id="target-balance" class="form-input mt-1">
+                                    <option value="SSP">SSP = 0 (Equilibrio Fiscal)</option>
+                                    <option value="NX">NX = 0 (Equilibrio Exterior)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium">Variable de Política a Ajustar:</label>
+                                <select id="policy-variable" class="form-input mt-1">
+                                    <option value="G0">Gasto Público (G0)</option>
+                                    <option value="TR0">Transferencias (TR0)</option>
+                                    <option value="T0">Impuesto Autónomo (T0)</option>
+                                    <option value="Mp">Oferta Monetaria Real (M/P)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="button" id="calculate-balanced-btn" class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition duration-150">
+                            Calcular Ajuste de Equilibrio
+                        </button>
+                    </form>
+
+                    <div id="balanced-results" class="mt-6 hidden p-4 bg-green-50 border-l-4 border-green-500 rounded-md">
+                        <h3 class="text-xl font-semibold text-green-800 mb-3 border-b pb-1">Resultados de Equilibrio Forzado</h3>
+                        <p class="text-sm">Renta Objetivo (Y*): <span id="Y-star" class="font-bold"></span></p>
+                        <p class="text-sm">Interés Objetivo (r*): <span id="r-star" class="font-bold"></span></p>
+                        <p class="text-sm">Ajuste Requerido: <span id="delta-X" class="font-bold text-lg"></span></p>
+                        <p class="text-sm">Nuevo Valor (X*): <span id="X-star" class="font-bold"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
